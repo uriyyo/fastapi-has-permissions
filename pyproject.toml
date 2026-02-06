@@ -1,0 +1,114 @@
+[project]
+name = "fastapi-has-permissions"
+version = "0.1.0"
+description = "FastAPI permissions system"
+readme = "README.md"
+requires-python = ">=3.10"
+uthors = [
+    { name = "Yurii Karabas", email = "1998uriyyo@gmail.com" },
+]
+license = "MIT"
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+    "fastapi>=0.128.2",
+    "typing-extensions>=4.15.0",
+]
+
+[project.urls]
+Repository = "https://github.com/uriyyo/fastapi-has-permissions"
+
+[dependency-groups]
+dev = [
+    "dirty-equals>=0.11",
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.0",
+    "ty>=0.0.15",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "ALL", # select all checks by default
+]
+ignore = [
+    # single rule exclude
+    "ANN401", # allow to use Any in *args and **kwargs
+    "TC001", # move to TYPE_CHECKING block
+    "TC003", # move standard imports to TYPE_CHECKING block
+    "TRY003", # allow msg in exception
+    "EM101",  # no need to move error message to var
+
+    # full rule exclude
+    "D", # ignore docstrings
+    "FIX", # ignore FIXMEs
+    "TD", # ignore all TODOs
+    "FA", # ignore future annotations
+
+    #    "ANN", # ignore annotations
+    #    "ARG", # ignore unused arguments
+    #    "FBT", # ignore flake8-boolean-trap
+    #    "EM", # ignore error message formatting
+]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    ".venv",
+]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "ANN"]
+
+[tool.coverage.paths]
+source = ["fastapi_has_permissions"]
+
+[tool.coverage.run]
+source = ["fastapi_has_permissions"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "@abstractmethod",
+    "@overload",
+    "if TYPE_CHECKING:",
+]
