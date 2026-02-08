@@ -91,13 +91,13 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/and-test",
             {},
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             id="and-test-fail-missing-both",
         ),
         pytest.param(
             "/or-test",
             {"authorization": "Bearer token"},
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             id="or-test-fail-missing-role-header",
         ),
         pytest.param(
@@ -139,7 +139,7 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/complex-test",
             {},
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             id="complex-fail-missing-role-header",
         ),
         pytest.param(
