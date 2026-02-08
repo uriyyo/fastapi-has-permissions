@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
 
 from ._bases import IdentityHashMixin, SignatureOverride
 from ._deps_args import remap_deps_args
-from ._errors import PermissionCheckError
-from ._results import CheckResult, Skipped, SkipPermissionCheck
+from ._results import CheckResult, Skipped, call_permissions_check
 from .types import Args, Kwargs
 
 if TYPE_CHECKING:
@@ -22,13 +21,7 @@ class ResolvedPermission(IdentityHashMixin):
     kwargs: Kwargs
 
     async def check_permissions(self) -> CheckResult:
-        try:
-            return await self.permission.check_permissions(*self.args, **self.kwargs)
-        except PermissionCheckError:
-            # TODO: check how we can propagate custom message from PermissionCheckError here
-            return False
-        except SkipPermissionCheck:
-            return Skipped()
+        return await call_permissions_check(self.permission, *self.args, **self.kwargs)
 
 
 @dataclass
@@ -56,7 +49,7 @@ class PermissionResolver(IdentityHashMixin, SignatureOverride):
 
 class Resolvable(Protocol):
     @abstractmethod
-    def to_resolver(self) -> PermissionResolver:
+    def __to_resolver__(self) -> PermissionResolver:
         pass
 
 

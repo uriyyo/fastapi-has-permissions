@@ -1,5 +1,6 @@
 import inspect
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -22,6 +23,7 @@ class IdentityHashMixin:
         cls.__hash__ = _identity_hash  # type: ignore[assignment]
 
 
+@dataclass
 class SignatureOverride(ABC):
     def __post_init__(self) -> None:
         self.__signature__ = self.__get_signature__()

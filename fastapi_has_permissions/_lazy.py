@@ -1,11 +1,12 @@
 import inspect
 from contextlib import suppress
 from dataclasses import dataclass, field
-from functools import cached_property, lru_cache
-from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar, cast, overload
+from functools import cached_property, lru_cache, partial
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias, TypeVar, cast, overload
 
 from fastapi import BackgroundTasks, Request, Response, WebSocket, routing
 from fastapi.dependencies import utils
+from fastapi.dependencies.utils import get_typed_signature
 from fastapi.exceptions import RequestValidationError
 
 from ._permissions import Permission, PermissionWrapper
@@ -85,7 +86,7 @@ class LazyPermissionResolver(PermissionResolver):
     skip_on_exc: Exceptions = field(default=(), kw_only=True)
 
     def __get_signature__(self) -> inspect.Signature:
-        return inspect.signature(self.__call__)
+        return get_typed_signature(self.__call__)
 
     @cached_property
     def _eager_resolver(self) -> PermissionResolver:
@@ -113,18 +114,38 @@ class _HasSkipOnExc:
 
 @dataclass
 class LazyPermission(_HasSkipOnExc, Permission):
-    def to_resolver(self) -> LazyPermissionResolver:
+    def __to_resolver__(self) -> LazyPermissionResolver:
         return LazyPermissionResolver(self, skip_on_exc=self.skip_on_exc)
 
 
 @dataclass
 class LazyPermissionWrapper(_HasSkipOnExc, PermissionWrapper):
-    def to_resolver(self) -> LazyPermissionResolver:
+    def __to_resolver__(self) -> LazyPermissionResolver:
         return LazyPermissionResolver(self.permission, skip_on_exc=self.skip_on_exc)
 
 
 TCls = TypeVar("TCls", bound=type[Permission])
 TPermission = TypeVar("TPermission", bound=Permission)
+
+
+class _LazyDecorator(Protocol):
+    @overload
+    def __call__(self, arg: TCls, /) -> TCls:
+        pass
+
+    @overload
+    def __call__(self, arg: TPermission, /) -> LazyPermissionWrapper:
+        pass
+
+
+@overload
+def lazy(
+    arg: None = None,
+    /,
+    *,
+    skip_on_exc: Exceptions | None = None,
+) -> _LazyDecorator:
+    pass
 
 
 @overload
@@ -133,24 +154,36 @@ def lazy(cls: TCls, /) -> TCls:
 
 
 @overload
-def lazy(permission: TPermission, /, *, skip_on_exc: Exceptions | None = None) -> LazyPermissionWrapper:
+def lazy(
+    permission: TPermission,
+    /,
+    *,
+    skip_on_exc: Exceptions | None = None,
+) -> LazyPermissionWrapper:
     pass
 
 
 def lazy(
-    arg: type[Permission] | Permission,
+    arg: type[Permission] | Permission | None = None,
     /,
     *,
     skip_on_exc: Exceptions | None = None,
-) -> type[Permission] | LazyPermissionWrapper:
-    if isinstance(arg, type):
-        if skip_on_exc:
-            raise ValueError(
-                "skip_on_exc is not supported when lazy is used as a class decorator. "
-                "Please use it with an instance of Permission instead.",
-            ) from None
+) -> type[Permission] | LazyPermissionWrapper | _LazyDecorator:
+    if arg is None:
+        return cast(
+            "_LazyDecorator",
+            partial(lazy, skip_on_exc=skip_on_exc),
+        )
 
-        return type(f"Lazy{arg.__name__}", (LazyPermission, arg), {})
+    if isinstance(arg, type):
+        if issubclass(arg, LazyPermission):
+            raise TypeError("Cannot apply @lazy to a subclass of LazyPermission")
+
+        ns = {}
+        if skip_on_exc is not None:
+            ns["skip_on_exc"] = skip_on_exc
+
+        return type(f"Lazy{arg.__name__}", (LazyPermission, arg), ns)
 
     return LazyPermissionWrapper(
         permission=arg,

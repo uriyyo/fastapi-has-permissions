@@ -10,56 +10,67 @@ from fastapi import Depends
 from typing_extensions import Self
 
 from ._bases import IdentityHashMixin, SignatureOverride
-from ._deps_args import get_dep_arg_name, remap_deps_args
-from ._errors import HTTPExcRaiser, PermissionCheckError
+from ._deps_args import (
+    deps_from_func_signature,
+    get_dep_arg_name,
+    get_signature_with_deps,
+    remap_deps_args,
+    signature_with_params,
+)
+from ._errors import HTTPExcRaiser
 from ._resolvers import PermissionResolver, Resolvable, ResolvedPermission
-from ._results import CheckResult, Skipped, SkipPermissionCheck, is_skipped
-from .types import AsyncFunc
+from ._results import CheckResult, Failed, Skipped, is_skipped
+from .types import AsyncFunc, Dep
 
 
 async def _default_check_permissions(_: Any) -> CheckResult:
     return True
 
 
-def _permission_to_param(permission: Permission, idx: int = 0, /) -> inspect.Parameter:
-    return inspect.Parameter(
-        name=get_dep_arg_name(idx),
-        kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        annotation=Annotated[
-            PermissionResolver,
-            Depends(permission.to_resolver()),
-        ],
-    )
-
-
-def _sign_with_params(params: Iterable[inspect.Parameter]) -> inspect.Signature:
-    return inspect.Signature(parameters=[*params])
-
-
 @dataclass
 class Permission(HTTPExcRaiser, Resolvable, SignatureOverride, IdentityHashMixin):
     check_permissions: ClassVar[AsyncFunc[CheckResult]] = _default_check_permissions
 
+    def __deps__(self) -> Iterable[Dep]:
+        for name in deps_from_func_signature(self.__init__):
+            yield getattr(self, name)
+
     def __get_signature__(self) -> inspect.Signature:
-        return _sign_with_params([_permission_to_param(self)])
+        return signature_with_params([self.__to_sign_param__()])
 
     def __check_signature__(self) -> inspect.Signature:
-        return inspect.signature(self.check_permissions)
+        return get_signature_with_deps(self.check_permissions, [*self.__deps__()])
 
-    def to_resolver(self) -> PermissionResolver:
+    def __to_sign_param__(self, idx: int = 0, /) -> inspect.Parameter:
+        return inspect.Parameter(
+            name=get_dep_arg_name(idx),
+            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            annotation=Annotated[
+                PermissionResolver,
+                self.__resolver_to_depends__(self.__to_resolver__()),
+            ],
+        )
+
+    def __to_resolver__(self) -> PermissionResolver:
         return PermissionResolver(permission=self)
+
+    def __resolver_to_depends__(self, resolver: PermissionResolver) -> Any:
+        return Depends(resolver)
 
     @remap_deps_args
     async def __call__(self, permission: ResolvedPermission) -> None:
         message: str | None = None
+        result: bool
 
-        try:
-            result = await permission.check_permissions()
-        except PermissionCheckError as e:
-            message = e.message
-            result = False
-        except SkipPermissionCheck:
-            result = True
+        match await permission.check_permissions():
+            case Failed(reason=reason):
+                message = reason
+                result = False
+            case False:
+                message = self.get_exc_message()
+                result = False
+            case _:
+                result = True
 
         if not result:
             self.raise_http_exception(message)
@@ -85,7 +96,7 @@ class _AllAnyPermissions(Permission):
     permissions: Sequence[Permission]
 
     def __check_signature__(self) -> inspect.Signature:
-        return _sign_with_params(_permission_to_param(permission, i) for i, permission in enumerate(self.permissions))
+        return signature_with_params([permission.__to_sign_param__(i) for i, permission in enumerate(self.permissions)])
 
     def _merge_permissions(self, other: Permission, cls: type[Self]) -> Self:
         new_self = copy(self)
@@ -103,7 +114,10 @@ class PermissionWrapper(Permission):
     permission: Permission
 
     def __check_signature__(self) -> inspect.Signature:
-        return _sign_with_params([_permission_to_param(self.permission)])
+        return signature_with_params([self.permission.__to_sign_param__()])
+
+    def __deps__(self) -> Iterable[Dep]:
+        return []
 
     @remap_deps_args
     async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:

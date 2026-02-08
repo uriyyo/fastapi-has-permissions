@@ -58,6 +58,7 @@ ignore = [
     "TC003", # move standard imports to TYPE_CHECKING block
     "TRY003", # allow msg in exception
     "EM101",  # no need to move error message to var
+    "COM812", # will be handled by ruff formatting
 
     # full rule exclude
     "D", # ignore docstrings
