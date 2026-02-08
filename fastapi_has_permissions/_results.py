@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, NoReturn, TypeAlias, TypeVar
 
 from typing_extensions import TypeIs
 
@@ -47,6 +47,14 @@ def is_failed(result: CheckResult) -> TypeIs[Failed]:
     return isinstance(result, Failed)
 
 
+def skip(reason: str | None = None) -> NoReturn:
+    raise SkipPermissionCheck(reason)
+
+
+def fail(reason: str | None = None) -> NoReturn:
+    raise PermissionCheckFailed(reason)
+
+
 TAsyncFunc = TypeVar("TAsyncFunc", bound=AsyncFunc)
 
 
@@ -73,9 +81,12 @@ async def call_permissions_check(
 __all__ = [
     "CheckResult",
     "Failed",
+    "PermissionCheckFailed",
     "SkipPermissionCheck",
     "Skipped",
     "call_permissions_check",
+    "fail",
     "is_failed",
     "is_skipped",
+    "skip",
 ]

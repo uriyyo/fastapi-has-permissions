@@ -9,8 +9,10 @@ from fastapi.dependencies import utils
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi.exceptions import RequestValidationError
 
+from fastapi_has_permissions._results import CheckResult, Skipped, SkipPermissionCheck
+
 from ._permissions import Permission, PermissionWrapper
-from ._resolvers import PermissionResolver, ResolvedResult, ResolvedToSkipped
+from ._resolvers import BaseResolvedPermission, PermissionResolver
 from .types import Exceptions
 
 _DEPENDENCY_CACHE_KEY = "__fastapi_has_permissions_dependency_cache__"
@@ -80,29 +82,51 @@ async def _solve_dependencies_for_dependant(
 
 
 @dataclass
+class LazyResolvedPermission(BaseResolvedPermission):
+    permission: Permission
+    request: Request
+    response: Response
+    skip_on_exc: Exceptions = ()
+
+    @cached_property
+    def _eager_resolver(self) -> PermissionResolver:
+        return PermissionResolver(self.permission)
+
+    async def check_permissions(self) -> CheckResult:
+        try:
+            return await self._check_permissions()
+        except SkipPermissionCheck as e:
+            return Skipped(reason=e.reason)
+        except self.skip_on_exc:
+            return Skipped()
+
+    async def _check_permissions(self) -> CheckResult:
+        route: _AnyRoute = self.request.scope["route"]
+        dependant = _resolver_to_dependant(route.path, self._eager_resolver)
+
+        solved = await _solve_dependencies_for_dependant(self.request, self.response, dependant)
+
+        if solved.errors:
+            raise RequestValidationError(solved.errors)
+
+        final_permission = await self._eager_resolver(**solved.values)
+        return await final_permission.check_permissions()
+
+
+@dataclass
 class LazyPermissionResolver(PermissionResolver):
     skip_on_exc: Exceptions = field(default=(), kw_only=True)
 
     def __get_signature__(self) -> inspect.Signature:
         return get_typed_signature(self.__call__)
 
-    @cached_property
-    def _eager_resolver(self) -> PermissionResolver:
-        return PermissionResolver(self.permission)
-
-    async def __call__(self, request: Request, response: Response) -> ResolvedResult:
-        route: _AnyRoute = request.scope["route"]
-        dependant = _resolver_to_dependant(route.path, self._eager_resolver)
-
-        try:
-            solved = await _solve_dependencies_for_dependant(request, response, dependant)
-
-            if solved.errors:
-                raise RequestValidationError(solved.errors)
-        except self.skip_on_exc:
-            return ResolvedToSkipped()
-
-        return await self._eager_resolver(**solved.values)
+    async def __call__(self, request: Request, response: Response) -> BaseResolvedPermission:
+        return LazyResolvedPermission(
+            permission=self.permission,
+            request=request,
+            response=response,
+            skip_on_exc=self.skip_on_exc,
+        )
 
 
 @dataclass

@@ -3,7 +3,6 @@ from __future__ import annotations
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
-from copy import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, final
 
@@ -49,7 +48,8 @@ class Permission(
 ):
     def __deps__(self) -> Iterable[Dep]:
         for name in deps_from_func_signature(self.__init__):
-            yield getattr(self, name)
+            if hasattr(self, name):
+                yield getattr(self, name)
 
     def __get_signature__(self) -> inspect.Signature:
         return signature_with_params([self.__to_sign_param__()])
@@ -115,14 +115,11 @@ class _AllAnyPermissions(Permission):
         return signature_with_params([permission.__to_sign_param__(i) for i, permission in enumerate(self.permissions)])
 
     def _merge_permissions(self, other: Permission, cls: type[Self]) -> Self:
-        new_self = copy(self)
 
         if isinstance(other, cls):
-            new_self.permissions = [*self.permissions, *other.permissions]
-        else:
-            new_self.permissions = [*self.permissions, other]
+            return cls(permissions=[*self.permissions, *other.permissions])
 
-        return new_self
+        return cls(permissions=[*self.permissions, other])
 
 
 @dataclass

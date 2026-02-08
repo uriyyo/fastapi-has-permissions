@@ -60,9 +60,11 @@ TAsyncFunc = TypeVar("TAsyncFunc", bound=AsyncFunc)
 def remap_deps_args(func: TAsyncFunc) -> TAsyncFunc:
     @wraps(func)
     async def wrapper(self: Any, **kwargs: Any) -> Any:
+        _kwargs = kwargs.copy()
+
         possible_args = (get_dep_arg_name(i) for i in count())
-        args = [kwargs.pop(arg) for arg in takewhile(lambda key: key in kwargs, possible_args)]
-        return await func(self, *args, **kwargs)
+        args = [_kwargs.pop(arg) for arg in takewhile(lambda key: key in _kwargs, possible_args)]
+        return await func(self, *args, **_kwargs)
 
     return cast("TAsyncFunc", wrapper)
 
