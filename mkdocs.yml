@@ -1,0 +1,99 @@
+site_name: FastAPI Has Permissions
+site_author: Yurii Karabas
+site_description: Declarative permissions system for FastAPI
+copyright: "Copyright &copy; 2024 Yurii Karabas"
+repo_url: https://github.com/uriyyo/fastapi-has-permissions
+repo_name: uriyyo/fastapi-has-permissions
+
+theme:
+  name: 'material'
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/lightbulb-outline
+        name: "Switch to dark mode"
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/lightbulb
+        name: "Switch to light mode"
+  features:
+    - content.tabs.link
+    - content.code.annotate
+    - content.code.copy
+    - announce.dismiss
+    - navigation.footer
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.preview
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - "General": index.md
+  - "Learn":
+      - "Tutorial - User Guide":
+          - "First Steps": learn/tutorial/first_steps.md
+          - "Class-Based Permissions": learn/tutorial/class_based.md
+          - "Function-Based Permissions": learn/tutorial/function_based.md
+          - "Boolean Composition": learn/tutorial/boolean_composition.md
+          - "Custom Error Responses": learn/tutorial/custom_errors.md
+          - "Skip & Fail Helpers": learn/tutorial/skip_and_fail.md
+          - "Lazy Permissions": learn/tutorial/lazy_permissions.md
+          - "The Dep Type": learn/tutorial/dep_type.md
+      - "Built-in Permissions":
+          - "IsAuthenticated": learn/builtin/is_authenticated.md
+          - "HasScope": learn/builtin/has_scope.md
+          - "HasRole": learn/builtin/has_role.md
+      - "Real-World Usage":
+          - "Overview": learn/real_world/overview.md
+  - "Contributing": contributing.md
+  - "License": license.md
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+      title: Page contents
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      pygments_lang_class: true
+  - pymdownx.extra
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true
+  - mdx_include:
+      base_path: docs
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/uriyyo/fastapi-has-permissions/
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/uriyyo/
+
+watch:
+  - docs
+  - README.md
+  - mkdocs.yml
