@@ -9,10 +9,10 @@ from fastapi.dependencies import utils
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi.exceptions import RequestValidationError
 
-from fastapi_has_permissions._results import CheckResult, Skipped, SkipPermissionCheck
-
+from ._bases import ForceDataclass
 from ._permissions import Permission, PermissionWrapper
 from ._resolvers import BaseResolvedPermission, PermissionResolver
+from ._results import CheckResult, Skipped, SkipPermissionCheck
 from .types import Exceptions
 
 _DEPENDENCY_CACHE_KEY = "__fastapi_has_permissions_dependency_cache__"
@@ -81,8 +81,7 @@ async def _solve_dependencies_for_dependant(
     )
 
 
-@dataclass
-class LazyResolvedPermission(BaseResolvedPermission):
+class LazyResolvedPermission(ForceDataclass, BaseResolvedPermission):
     permission: Permission
     request: Request
     response: Response
@@ -113,7 +112,6 @@ class LazyResolvedPermission(BaseResolvedPermission):
         return await final_permission.check_permissions()
 
 
-@dataclass
 class LazyPermissionResolver(PermissionResolver):
     skip_on_exc: Exceptions = field(default=(), kw_only=True)
 
@@ -134,13 +132,11 @@ class _HasSkipOnExc:
     skip_on_exc: Exceptions = field(default=(), kw_only=True)
 
 
-@dataclass
 class LazyPermission(_HasSkipOnExc, Permission):
     def __to_resolver__(self) -> LazyPermissionResolver:
         return LazyPermissionResolver(self, skip_on_exc=self.skip_on_exc)
 
 
-@dataclass
 class LazyPermissionWrapper(_HasSkipOnExc, PermissionWrapper):
     def __to_resolver__(self) -> LazyPermissionResolver:
         return LazyPermissionResolver(self.permission, skip_on_exc=self.skip_on_exc)

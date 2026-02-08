@@ -1,6 +1,5 @@
 import inspect
 from collections.abc import Callable
-from dataclasses import dataclass
 from functools import partial
 from typing import Any, TypeVar, overload
 
@@ -13,7 +12,6 @@ from .types import AsyncFunc
 TAsyncFunc = TypeVar("TAsyncFunc", bound=AsyncFunc)
 
 
-@dataclass
 class FuncPermission(Permission):
     func: AsyncFunc
 

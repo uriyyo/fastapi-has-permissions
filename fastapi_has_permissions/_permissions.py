@@ -3,15 +3,14 @@ from __future__ import annotations
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import fields
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, final
 
 from fastapi import Depends
 from typing_extensions import Self
 
-from ._bases import IdentityHashMixin, SignatureOverride
+from ._bases import ForceDataclass, IdentityHashMixin, SignatureOverride
 from ._deps_args import (
-    deps_from_func_signature,
     get_dep_arg_name,
     get_signature_with_deps,
     remap_deps_args,
@@ -37,8 +36,8 @@ class BasePermission(ABC):  # noqa: B024
             pass
 
 
-@dataclass
 class Permission(
+    ForceDataclass,
     BasePermission,
     HTTPExcRaiser,
     Resolvable,
@@ -47,9 +46,9 @@ class Permission(
     ABC,
 ):
     def __deps__(self) -> Iterable[Dep]:
-        for name in deps_from_func_signature(self.__init__):
-            if hasattr(self, name):
-                yield getattr(self, name)
+        for field in fields(self):
+            if field.type in (Dep, "Dep"):
+                yield getattr(self, field.name)
 
     def __get_signature__(self) -> inspect.Signature:
         return signature_with_params([self.__to_sign_param__()])
@@ -107,7 +106,6 @@ class Permission(
         return NotPermission(self)
 
 
-@dataclass
 class _AllAnyPermissions(Permission):
     permissions: Sequence[Permission]
 
@@ -122,15 +120,11 @@ class _AllAnyPermissions(Permission):
         return cls(permissions=[*self.permissions, other])
 
 
-@dataclass
 class PermissionWrapper(Permission):
     permission: Permission
 
     def __check_signature__(self) -> inspect.Signature:
         return signature_with_params([self.permission.__to_sign_param__()])
-
-    def __deps__(self) -> Iterable[Dep]:
-        return []
 
     async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
         return await permission.check_permissions()
@@ -166,7 +160,6 @@ class AnyPermissions(_AllAnyPermissions):
 
 
 @final
-@dataclass
 class AllPermissions(_AllAnyPermissions):
     default_exc_message: ClassVar[str] = "Not all permissions were satisfied"
 
@@ -196,7 +189,6 @@ class AllPermissions(_AllAnyPermissions):
 
 
 @final
-@dataclass
 class NotPermission(PermissionWrapper):
     default_exc_message: ClassVar[str] = "The permission was satisfied, but it should not have been"
 

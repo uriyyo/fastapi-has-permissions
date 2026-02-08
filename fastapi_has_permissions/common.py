@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from dataclasses import dataclass
 from typing import Any
 
 from fastapi import Security
@@ -10,7 +9,6 @@ from ._resolvers import PermissionResolver
 from .types import Dep
 
 
-@dataclass
 class IsAuthenticated(Permission):
     authentication_dep: Dep
 
@@ -18,7 +16,6 @@ class IsAuthenticated(Permission):
         return is_authenticated
 
 
-@dataclass
 class HasScope(Permission):
     scope_dep: Dep
     scopes: Iterable[str]
@@ -30,7 +27,6 @@ class HasScope(Permission):
         return all(required_scope in current_scopes for required_scope in security_scopes.scopes)
 
 
-@dataclass
 class HasRole(Permission):
     role_dep: Dep
     roles: Iterable[str]

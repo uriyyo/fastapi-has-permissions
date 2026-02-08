@@ -1,7 +1,9 @@
 import inspect
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+from typing_extensions import dataclass_transform
 
 
 def _identity_hash(self: Any) -> int:
@@ -33,7 +35,20 @@ class SignatureOverride(ABC):
         pass
 
 
+_dataclass_params = {"init", "repr", "eq", "order", "unsafe_hash", "frozen", "match_args", "kw_only"}
+
+
+@dataclass_transform(field_specifiers=(field,))
+class ForceDataclass:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+
+        dt_kwargs = {param: kwargs[param] for param in _dataclass_params & kwargs.keys()}
+        dataclass(cls, **dt_kwargs)
+
+
 __all__ = [
+    "ForceDataclass",
     "IdentityHashMixin",
     "SignatureOverride",
 ]

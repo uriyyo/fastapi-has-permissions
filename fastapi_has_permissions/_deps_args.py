@@ -7,7 +7,7 @@ from typing import Annotated, Any, TypeVar, cast
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi.params import Depends
 
-from .types import AsyncFunc, Dep, Deps, Func
+from .types import AsyncFunc, Deps, Func
 
 
 def get_dep_arg_name(index: int = 0, /) -> str:
@@ -42,14 +42,6 @@ def get_signature_with_deps(func: Func, deps: Deps) -> inspect.Signature:
     )
 
 
-def deps_from_func_signature(func: Func) -> Iterable[str]:
-    sign = get_typed_signature(func)
-
-    for param in sign.parameters.values():
-        if param.annotation is Dep:
-            yield param.name
-
-
 def signature_with_params(params: Iterable[inspect.Parameter]) -> inspect.Signature:
     return inspect.Signature(parameters=[*params])
 
@@ -70,7 +62,6 @@ def remap_deps_args(func: TAsyncFunc) -> TAsyncFunc:
 
 
 __all__ = [
-    "deps_from_func_signature",
     "get_dep_arg_name",
     "get_signature_with_deps",
     "remap_deps_args",

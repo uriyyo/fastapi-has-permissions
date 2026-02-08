@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import inspect
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
-from ._bases import IdentityHashMixin, SignatureOverride
+from ._bases import ForceDataclass, IdentityHashMixin, SignatureOverride
 from ._deps_args import remap_deps_args
 from ._results import CheckResult, call_permissions_check
 from .types import Args, Kwargs
@@ -20,8 +19,7 @@ class BaseResolvedPermission(ABC, IdentityHashMixin):
         pass
 
 
-@dataclass
-class ResolvedPermission(BaseResolvedPermission):
+class ResolvedPermission(ForceDataclass, BaseResolvedPermission):
     permission: Permission
     args: Args
     kwargs: Kwargs
@@ -30,8 +28,7 @@ class ResolvedPermission(BaseResolvedPermission):
         return await call_permissions_check(self.permission, *self.args, **self.kwargs)
 
 
-@dataclass
-class PermissionResolver(IdentityHashMixin, SignatureOverride):
+class PermissionResolver(ForceDataclass, IdentityHashMixin, SignatureOverride):
     permission: Permission
 
     def __get_signature__(self) -> inspect.Signature:
