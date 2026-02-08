@@ -222,7 +222,7 @@ wheels = [
 
 [[package]]
 name = "fastapi-has-permissions"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
@@ -243,7 +243,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.116.1" },
+    { name = "fastapi", specifier = ">=0.118.0" },
     { name = "typing-extensions", specifier = ">=4.15.0" },
 ]
 

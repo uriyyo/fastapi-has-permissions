@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import inspect
+from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from copy import copy
 from dataclasses import dataclass
-from typing import Annotated, Any, ClassVar, final
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, final
 
 from fastapi import Depends
 from typing_extensions import Self
@@ -23,14 +24,29 @@ from ._results import CheckResult, Failed, Skipped, is_skipped
 from .types import AsyncFunc, Dep
 
 
-async def _default_check_permissions(_: Any) -> CheckResult:
-    return True
+class BasePermission(ABC):  # noqa: B024
+    if TYPE_CHECKING:
+
+        @property
+        @abstractmethod
+        def check_permissions(self) -> AsyncFunc[CheckResult]:
+            pass
+    else:
+
+        @abstractmethod
+        async def check_permissions(self, *args: Any, **kwargs: Any) -> CheckResult:
+            pass
 
 
 @dataclass
-class Permission(HTTPExcRaiser, Resolvable, SignatureOverride, IdentityHashMixin):
-    check_permissions: ClassVar[AsyncFunc[CheckResult]] = _default_check_permissions
-
+class Permission(
+    BasePermission,
+    HTTPExcRaiser,
+    Resolvable,
+    SignatureOverride,
+    IdentityHashMixin,
+    ABC,
+):
     def __deps__(self) -> Iterable[Dep]:
         for name in deps_from_func_signature(self.__init__):
             yield getattr(self, name)
@@ -119,7 +135,6 @@ class PermissionWrapper(Permission):
     def __deps__(self) -> Iterable[Dep]:
         return []
 
-    @remap_deps_args
     async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
         return await permission.check_permissions()
 

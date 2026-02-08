@@ -61,6 +61,7 @@ async def _solve_dependencies_for_dependant(
     dependant: utils.Dependant,
 ) -> utils.SolvedDependency:
     route: _AnyRoute = request.scope["route"]
+    astack = request.scope["fastapi_inner_astack"]
 
     dependency_cache = request.scope.get(_DEPENDENCY_CACHE_KEY, {})
     body = await _get_request_body(request)
@@ -73,8 +74,7 @@ async def _solve_dependencies_for_dependant(
         background_tasks=cast("BackgroundTasks", response.background),
         response=response,
         dependency_overrides_provider=route.dependency_overrides_provider,
-        # this param is no longer actually used, can ignore it
-        async_exit_stack=None,  # type: ignore[arg-type]
+        async_exit_stack=astack,
         embed_body_fields=route._embed_body_fields,  # noqa: SLF001
     )
 
