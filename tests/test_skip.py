@@ -171,13 +171,13 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/or-skip-and-fail",
             {},
-            status.HTTP_200_OK,
+            status.HTTP_403_FORBIDDEN,
             id="or-skip-and-fail-no-role-skipped",
         ),
         pytest.param(
             "/or-skip-and-fail",
             {"role": "user"},
-            status.HTTP_200_OK,
+            status.HTTP_403_FORBIDDEN,
             id="or-skip-and-fail-wrong-role-skipped",
         ),
         pytest.param(
@@ -219,7 +219,7 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/complex-skip",
             {"role": "admin"},
-            status.HTTP_200_OK,
+            status.HTTP_403_FORBIDDEN,
             id="complex-skip-admin-role-no-auth-skips-token-check",
         ),
     ],

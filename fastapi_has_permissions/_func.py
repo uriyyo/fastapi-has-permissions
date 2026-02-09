@@ -23,7 +23,7 @@ class FuncPermission(Permission):
 
 
 @overload
-def permission(arg: TAsyncFunc, /) -> FuncPermission:
+def permission(arg: TAsyncFunc, /) -> Callable[..., FuncPermission]:
     pass
 
 
@@ -34,7 +34,7 @@ def permission(
     *,
     message: str | None = None,
     status_code: int | None = None,
-) -> Callable[[TAsyncFunc], FuncPermission]:
+) -> Callable[[TAsyncFunc], Callable[..., FuncPermission]]:
     pass
 
 
@@ -48,7 +48,7 @@ def permission(
     if arg is None:
         return partial(permission, message=message, status_code=status_code)
 
-    return FuncPermission(func=arg, message=message, status_code=status_code)
+    return partial(FuncPermission, func=arg, message=message, status_code=status_code)
 
 
 __all__ = [

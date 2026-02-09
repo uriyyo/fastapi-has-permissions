@@ -1,7 +1,7 @@
 site_name: FastAPI Has Permissions
 site_author: Yurii Karabas
 site_description: Declarative permissions system for FastAPI
-copyright: "Copyright &copy; 2024 Yurii Karabas"
+copyright: "Copyright &copy; 2026 Yurii Karabas"
 repo_url: https://github.com/uriyyo/fastapi-has-permissions
 repo_name: uriyyo/fastapi-has-permissions
 

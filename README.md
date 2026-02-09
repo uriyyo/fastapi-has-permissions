@@ -91,7 +91,7 @@ async def has_admin_role(role: Annotated[str, Header()]) -> bool:
     return role == "admin"
 
 
-@app.get("/admin", dependencies=[Depends(has_admin_role)])
+@app.get("/admin", dependencies=[Depends(has_admin_role())])
 async def admin_endpoint():
     return {"message": "Admin access granted"}
 ```

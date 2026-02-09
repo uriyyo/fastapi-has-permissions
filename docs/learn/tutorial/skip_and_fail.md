@@ -134,13 +134,13 @@ Depends(AlwaysSkip() & HasAuthorizationHeader())
 |----------|--------|
 | All skip | `Skipped` |
 | Skip + Pass | Pass |
-| Skip + Fail | `Skipped` (skip takes precedence over fail) |
+| Skip + Fail | Fail |
 
 ```python
-# If AlwaysSkip skips, the OR result is lenient
+# If AlwaysSkip skips, the OR result depends on non-skipped permissions
 Depends(AlwaysSkip() | HasAdminRole())
 # With admin role: 200 OK (at least one passes)
-# Without admin role: 200 OK (skip causes the whole OR to be skipped)
+# Without admin role: 403 Forbidden (non-skipped permission fails)
 ```
 
 ### NOT (`~`)

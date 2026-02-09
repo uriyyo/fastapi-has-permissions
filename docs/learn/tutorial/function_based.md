@@ -20,14 +20,15 @@ app = FastAPI()
 
 @app.get(
     "/protected",
-    dependencies=[Depends(has_authorization_header)],
+    dependencies=[Depends(has_authorization_header())],
 )
 async def protected():
     return {"message": "You have access!"}
 ```
 
-The `@permission` decorator wraps your async function into a `Permission` instance. This means
-it supports all the same features as class-based permissions, including boolean composition.
+The `@permission` decorator wraps your async function into a permission factory. Call it to create
+a `Permission` instance. This means it supports all the same features as class-based permissions,
+including boolean composition.
 
 ## With FastAPI Dependency Injection
 
@@ -51,7 +52,7 @@ app = FastAPI()
 
 @app.get(
     "/admin",
-    dependencies=[Depends(has_admin_role)],
+    dependencies=[Depends(has_admin_role())],
 )
 async def admin_only():
     return {"message": "Admin access granted"}
@@ -84,6 +85,12 @@ async def my_check(...) -> bool:
     ...
 ```
 
+In both cases, the result is a **factory** -- call it to create a permission instance:
+
+```python
+Depends(my_check())  # call to create the permission instance
+```
+
 ## Boolean Composition
 
 Function-based permissions support the same `&`, `|`, `~` operators as class-based permissions:
@@ -112,7 +119,7 @@ app = FastAPI()
 # Both must pass
 @app.get(
     "/admin",
-    dependencies=[Depends(has_authorization & has_admin_role)],
+    dependencies=[Depends(has_authorization() & has_admin_role())],
 )
 async def admin_only():
     return {"message": "Authenticated admin access"}
@@ -121,7 +128,7 @@ async def admin_only():
 # Either must pass
 @app.get(
     "/flexible",
-    dependencies=[Depends(has_authorization | has_admin_role)],
+    dependencies=[Depends(has_authorization() | has_admin_role())],
 )
 async def flexible():
     return {"message": "Access granted"}

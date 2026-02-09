@@ -141,14 +141,15 @@ class AnyPermissions(_AllAnyPermissions):
         return self._merge_permissions(other, AnyPermissions)
 
     async def check_permissions(self, *permissions: ResolvedPermission) -> CheckResult:
-        only_skips = False
+        only_skips = True
 
         for permission in permissions:
             result = await permission.check_permissions()
 
             if is_skipped(result):
-                only_skips = True
                 continue
+
+            only_skips = False
 
             if result:
                 return True

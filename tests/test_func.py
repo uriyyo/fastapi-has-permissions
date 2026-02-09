@@ -6,8 +6,7 @@ from fastapi import Depends, FastAPI, Header, status
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from fastapi_has_permissions import Permission
-from fastapi_has_permissions._func import FuncPermission, permission
+from fastapi_has_permissions._func import permission
 from fastapi_has_permissions._results import CheckResult
 
 app = FastAPI()
@@ -27,23 +26,23 @@ has_admin_role = permission(has_role)
 
 @app.get(
     "/simple-test",
-    dependencies=[Depends(has_authorization)],
+    dependencies=[Depends(has_authorization())],
 )
 @app.get(
     "/and-test",
-    dependencies=[Depends(has_authorization & has_admin_role)],
+    dependencies=[Depends(has_authorization() & has_admin_role())],
 )
 @app.get(
     "/or-test",
-    dependencies=[Depends(has_authorization | has_admin_role)],
+    dependencies=[Depends(has_authorization() | has_admin_role())],
 )
 @app.get(
     "/not-test",
-    dependencies=[Depends(~has_authorization)],
+    dependencies=[Depends(~has_authorization())],
 )
 @app.get(
     "/complex-test",
-    dependencies=[Depends((has_authorization & has_admin_role) | ~has_authorization)],
+    dependencies=[Depends((has_authorization() & has_admin_role()) | ~has_authorization())],
 )
 async def route():
     return "OK"
@@ -153,16 +152,3 @@ def app_client() -> Iterator[TestClient]:
 def test_permissions(endpoint, headers, expected_status, app_client) -> None:
     response = app_client.get(endpoint, headers=headers)
     assert response.status_code == expected_status
-
-
-def test_permission_is_permission_subclass() -> None:
-    assert isinstance(has_authorization, Permission)
-    assert isinstance(has_admin_role, Permission)
-
-
-def test_func_permission_stores_func() -> None:
-    assert isinstance(has_authorization, FuncPermission)
-    assert has_authorization.func is has_authorization_header
-
-    assert isinstance(has_admin_role, FuncPermission)
-    assert has_admin_role.func is has_role
