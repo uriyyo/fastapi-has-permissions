@@ -1,3 +1,4 @@
+from ._dep import Dep
 from ._func import permission
 from ._lazy import LazyPermission, lazy
 from ._permissions import AllPermissions, AnyPermissions, NotPermission, Permission, PermissionWrapper
@@ -7,6 +8,7 @@ __all__ = [
     "AllPermissions",
     "AnyPermissions",
     "CheckResult",
+    "Dep",
     "Failed",
     "LazyPermission",
     "NotPermission",

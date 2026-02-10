@@ -96,6 +96,29 @@ async def admin_endpoint():
     return {"message": "Admin access granted"}
 ```
 
+Function-based permissions also support `Dep` arguments for injecting FastAPI dependencies:
+
+```python
+from fastapi_has_permissions import Dep, permission
+
+
+async def get_admin_role() -> str:
+    return "admin"
+
+
+AdminRoleDep = Annotated[str, Depends(get_admin_role)]
+
+
+@permission
+async def has_role(admin_role: Dep[str], /, role: Annotated[str, Header()]) -> bool:
+    return role == admin_role
+
+
+@app.get("/admin", dependencies=[Depends(has_role(AdminRoleDep))])
+async def admin_endpoint():
+    return {"message": "Admin access granted"}
+```
+
 Function-based permissions support the same `&`, `|`, `~` composition.
 
 ### Lazy Permissions

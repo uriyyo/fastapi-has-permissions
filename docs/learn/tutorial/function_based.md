@@ -91,6 +91,57 @@ In both cases, the result is a **factory** -- call it to create a permission ins
 Depends(my_check())  # call to create the permission instance
 ```
 
+## Dependencies with `Dep`
+
+Function-based permissions can accept `Dep` arguments, similar to class-based permissions with `Dep` fields.
+Declare parameters with `Dep[T]` type annotations -- these must come before any regular parameters in the
+function signature:
+
+```python
+from typing import Annotated
+
+from fastapi import Depends, Header
+
+from fastapi_has_permissions import Dep, permission
+
+
+async def get_admin_role() -> str:
+    return "admin"
+
+
+@permission
+async def has_role(
+    admin_role: Dep[str],
+    role: Annotated[str, Header()],
+) -> bool:
+    return role == admin_role
+```
+
+When creating the permission instance, pass the dependencies as positional arguments to the factory:
+
+```python
+AdminRoleDep = Annotated[str, Depends(get_admin_role)]
+
+has_admin_role = has_role(AdminRoleDep)
+
+
+@app.get(
+    "/admin",
+    dependencies=[Depends(has_admin_role)],
+)
+async def admin_only():
+    return {"message": "Admin access granted"}
+```
+
+At request time, `Annotated[str, Depends(get_admin_role)]` is resolved by FastAPI and its value is
+passed as the `admin_role` argument. The remaining parameters (`role`) are resolved via FastAPI's
+standard DI.
+
+!!! note
+
+    All `Dep` parameters must be declared before non-`Dep` parameters in the function signature.
+    The number of `Dep` parameters must match the number of arguments passed to the factory.
+
 ## Boolean Composition
 
 Function-based permissions support the same `&`, `|`, `~` operators as class-based permissions:
@@ -136,5 +187,6 @@ async def flexible():
 
 !!! tip
 
-    Function-based permissions are best suited for simple, stateless checks. For permissions
-    that need parameters (like a configurable role name), use [class-based permissions](class_based.md) instead.
+    Function-based permissions work well for both simple checks and parameterized checks
+    using `Dep`. For permissions that need multiple configuration fields or complex
+    state, consider [class-based permissions](class_based.md) instead.

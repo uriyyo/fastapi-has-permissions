@@ -1,6 +1,6 @@
 [project]
 name = "fastapi-has-permissions"
-version = "0.1.3"
+version = "0.1.4"
 description = "FastAPI permissions system"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -20,7 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
-    "fastapi>=0.118.0",
+    "fastapi>=0.128.0",
     "typing-extensions>=4.15.0",
 ]
 
@@ -37,6 +37,7 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.15.0",
     "ty>=0.0.15",
+    "uvicorn>=0.40.0",
 ]
 docs = [
     "mkdocs>=1.6.1",

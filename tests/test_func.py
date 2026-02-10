@@ -6,8 +6,7 @@ from fastapi import Depends, FastAPI, Header, status
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from fastapi_has_permissions._func import permission
-from fastapi_has_permissions._results import CheckResult
+from fastapi_has_permissions import CheckResult, Dep, permission
 
 app = FastAPI()
 
@@ -16,33 +15,40 @@ async def has_authorization_header(request: Request) -> CheckResult:
     return "authorization" in request.headers
 
 
-async def has_role(role: Annotated[str, Header()]) -> CheckResult:
-    return role == "admin"
+async def get_admin_role() -> str:
+    return "admin"
 
 
-has_authorization = permission(has_authorization_header)
-has_admin_role = permission(has_role)
+async def has_role(
+    admin_role: Dep[str],
+    role: Annotated[str, Header()],
+) -> CheckResult:
+    return role == admin_role
+
+
+has_authorization = permission(has_authorization_header)()
+has_admin_role = permission(has_role)(Depends(get_admin_role))
 
 
 @app.get(
     "/simple-test",
-    dependencies=[Depends(has_authorization())],
+    dependencies=[Depends(has_authorization)],
 )
 @app.get(
     "/and-test",
-    dependencies=[Depends(has_authorization() & has_admin_role())],
+    dependencies=[Depends(has_authorization & has_admin_role)],
 )
 @app.get(
     "/or-test",
-    dependencies=[Depends(has_authorization() | has_admin_role())],
+    dependencies=[Depends(has_authorization | has_admin_role)],
 )
 @app.get(
     "/not-test",
-    dependencies=[Depends(~has_authorization())],
+    dependencies=[Depends(~has_authorization)],
 )
 @app.get(
     "/complex-test",
-    dependencies=[Depends((has_authorization() & has_admin_role()) | ~has_authorization())],
+    dependencies=[Depends((has_authorization & has_admin_role) | ~has_authorization)],
 )
 async def route():
     return "OK"
@@ -90,13 +96,13 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/and-test",
             {},
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             id="and-test-fail-missing-both",
         ),
         pytest.param(
             "/or-test",
             {"authorization": "Bearer token"},
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             id="or-test-fail-missing-role-header",
         ),
         pytest.param(
@@ -138,7 +144,7 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/complex-test",
             {},
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             id="complex-fail-missing-role-header",
         ),
         pytest.param(

@@ -6,9 +6,15 @@ different data sources.
 
 ## What Is `Dep`?
 
-`Dep` is a type alias from `fastapi_has_permissions.types`. When a permission class has a field typed
-as `Dep`, the library treats it as a FastAPI dependency that should be resolved at request time. The
+`Dep` is a generic type from `fastapi_has_permissions`. When a permission class has a field typed
+as `Dep[T]`, the library treats it as a FastAPI dependency that should be resolved at request time. The
 resolved value is passed as a positional argument to `check_permissions`.
+
+`Dep` accepts a type argument to indicate the expected resolved type:
+
+- `Dep[HasWorkspaceID]` -- a dependency that resolves to a `HasWorkspaceID`-compatible object
+- `Dep[str]` -- a dependency that resolves to a `str`
+- `Dep[Any]` -- a dependency with no specific type (equivalent to bare `Dep`)
 
 ## Example: Shared Workspace Check
 
@@ -17,13 +23,16 @@ Different resources (articles, comments, files) all have a `workspace_id`, but t
 different dependencies:
 
 ```python
-from typing import Annotated, Any
+from typing import Annotated, Protocol
 from uuid import UUID
 
 from fastapi import Depends, Path
 
-from fastapi_has_permissions import Permission
-from fastapi_has_permissions.types import Dep
+from fastapi_has_permissions import Dep, Permission
+
+
+class HasWorkspaceID(Protocol):
+    workspace_id: UUID
 
 
 # Dependencies for loading different resources
@@ -37,9 +46,9 @@ async def get_comment(comment_id: Annotated[UUID, Path()]) -> Comment:
 
 # A single permission class that works with any resource
 class BelongsToSameWorkspace(Permission):
-    resource_dep: Dep  # the dependency that provides the resource
+    resource_dep: Dep[HasWorkspaceID]  # the dependency that provides the resource
 
-    async def check_permissions(self, resource: Any, /, current_user: CurrentUserDep) -> bool:
+    async def check_permissions(self, resource: HasWorkspaceID, /, current_user: CurrentUserDep) -> bool:
         return resource.workspace_id == current_user.workspace_id
 ```
 
@@ -80,10 +89,10 @@ to `check_permissions` in the order they're declared:
 
 ```python
 class BothInSameWorkspace(Permission):
-    source_dep: Dep
-    target_dep: Dep
+    source_dep: Dep[HasWorkspaceID]
+    target_dep: Dep[HasWorkspaceID]
 
-    async def check_permissions(self, source: Any, target: Any, /) -> bool:
+    async def check_permissions(self, source: HasWorkspaceID, target: HasWorkspaceID, /) -> bool:
         return source.workspace_id == target.workspace_id
 ```
 
@@ -97,8 +106,8 @@ from dataclasses import field
 
 from fastapi.exceptions import RequestValidationError
 
-from fastapi_has_permissions import LazyPermission
-from fastapi_has_permissions.types import Dep, Exceptions
+from fastapi_has_permissions import Dep, LazyPermission
+from fastapi_has_permissions.types import Exceptions
 
 
 class GracefulLazyPermission(LazyPermission):
@@ -106,9 +115,9 @@ class GracefulLazyPermission(LazyPermission):
 
 
 class BelongsToSameWorkspace(GracefulLazyPermission):
-    resource_dep: Dep
+    resource_dep: Dep[HasWorkspaceID]
 
-    async def check_permissions(self, resource: Any, /, current_user: CurrentUserDep) -> bool:
+    async def check_permissions(self, resource: HasWorkspaceID, /, current_user: CurrentUserDep) -> bool:
         return resource.workspace_id == current_user.workspace_id
 ```
 

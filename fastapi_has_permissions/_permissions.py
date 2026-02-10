@@ -10,6 +10,7 @@ from fastapi import Depends
 from typing_extensions import Self
 
 from ._bases import ForceDataclass, IdentityHashMixin, SignatureOverride
+from ._dep import is_dep
 from ._deps_args import (
     get_dep_arg_name,
     get_signature_with_deps,
@@ -47,7 +48,7 @@ class Permission(
 ):
     def __deps__(self) -> Iterable[Dep]:
         for field in fields(self):
-            if field.type in (Dep, "Dep"):
+            if is_dep(field.type):
                 yield getattr(self, field.name)
 
     def __get_signature__(self) -> inspect.Signature:
