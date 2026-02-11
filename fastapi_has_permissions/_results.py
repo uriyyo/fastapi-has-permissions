@@ -43,8 +43,12 @@ def is_skipped(result: CheckResult) -> TypeIs[Skipped]:
     return isinstance(result, Skipped)
 
 
-def is_failed(result: CheckResult) -> TypeIs[Failed]:
-    return isinstance(result, Failed)
+def is_failed(result: CheckResult) -> TypeIs[Failed | bool]:
+    return isinstance(result, Failed) or result is False
+
+
+def is_successful(result: CheckResult) -> TypeIs[bool]:
+    return result is True
 
 
 def skip(reason: str | None = None) -> NoReturn:
@@ -88,5 +92,6 @@ __all__ = [
     "fail",
     "is_failed",
     "is_skipped",
+    "is_successful",
     "skip",
 ]

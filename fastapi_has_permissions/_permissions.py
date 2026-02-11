@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
-from dataclasses import fields
+from dataclasses import field, fields
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, final
 
 from fastapi import Depends
@@ -46,10 +46,12 @@ class Permission(
     IdentityHashMixin,
     ABC,
 ):
+    auto_error: bool = field(default=True, kw_only=True)
+
     def __deps__(self) -> Iterable[Dep]:
-        for field in fields(self):
-            if is_dep(field.type):
-                yield getattr(self, field.name)
+        for dfield in fields(self):
+            if is_dep(dfield.type):
+                yield getattr(self, dfield.name)
 
     def __get_signature__(self) -> inspect.Signature:
         return signature_with_params([self.__to_sign_param__()])
@@ -74,11 +76,11 @@ class Permission(
         return Depends(resolver)
 
     @remap_deps_args
-    async def __call__(self, permission: ResolvedPermission) -> None:
+    async def __call__(self, permission: ResolvedPermission) -> CheckResult:
         message: str | None = None
         result: bool
 
-        match await permission.check_permissions():
+        match ret := await permission.check_permissions():
             case Failed(reason=reason):
                 message = reason
                 result = False
@@ -88,8 +90,10 @@ class Permission(
             case _:
                 result = True
 
-        if not result:
+        if self.auto_error and not result:
             self.raise_http_exception(message)
+
+        return ret
 
     def __and__(self, other: Permission) -> Permission:
         if not isinstance(other, Permission):

@@ -52,6 +52,7 @@ nav:
           - "Function-Based Permissions": learn/tutorial/function_based.md
           - "Boolean Composition": learn/tutorial/boolean_composition.md
           - "Custom Error Responses": learn/tutorial/custom_errors.md
+          - "Auto Error": learn/tutorial/auto_error.md
           - "Skip & Fail Helpers": learn/tutorial/skip_and_fail.md
           - "Lazy Permissions": learn/tutorial/lazy_permissions.md
           - "The Dep Type": learn/tutorial/dep_type.md

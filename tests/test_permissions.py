@@ -1,11 +1,13 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Permission
+from fastapi_has_permissions import CheckResult, Permission
+from fastapi_has_permissions.common import no_auto_error
 
 app = FastAPI()
 
@@ -55,6 +57,17 @@ class HasRole(Permission):
 )
 async def route() -> str:
     return "You have access to this endpoint!"
+
+
+@app.get("/auto-error-test")
+async def auto_error_false_route(
+    *,
+    has_auth: Annotated[
+        CheckResult,
+        Depends(no_auto_error(HasAuthorizationHeader())),
+    ],
+) -> dict[str, bool]:
+    return {"has_auth": bool(has_auth)}
 
 
 @pytest.fixture(scope="session")
@@ -185,3 +198,26 @@ def app_client() -> Iterator[TestClient]:
 def test_permissions(endpoint, headers, expected_status, app_client) -> None:
     response = app_client.get(endpoint, headers=headers)
     assert response.status_code == expected_status
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected_has_auth"),
+    [
+        pytest.param(
+            {},
+            False,
+            id="auto-error-false-no-auth-header",
+        ),
+        pytest.param(
+            {
+                "Authorization": "some-token",
+            },
+            True,
+            id="auto-error-false-with-auth-header",
+        ),
+    ],
+)
+def test_auto_error_false(headers, expected_has_auth, app_client) -> None:
+    response = app_client.get("/auto-error-test", headers=headers)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {"has_auth": expected_has_auth}

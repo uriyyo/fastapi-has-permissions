@@ -4,6 +4,8 @@ from typing import Any
 from fastapi import Security
 from fastapi.security import SecurityScopes
 
+from fastapi_has_permissions import PermissionWrapper
+
 from ._permissions import Permission
 from ._resolvers import PermissionResolver
 from .types import Dep
@@ -35,8 +37,13 @@ class HasRole(Permission):
         return current_role in self.roles
 
 
+def no_auto_error(permission: Permission) -> PermissionWrapper:
+    return PermissionWrapper(permission, auto_error=False)
+
+
 __all__ = [
     "HasRole",
     "HasScope",
     "IsAuthenticated",
+    "no_auto_error",
 ]
