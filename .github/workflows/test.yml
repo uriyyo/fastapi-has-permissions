@@ -38,7 +38,7 @@ jobs:
           uv run pytest --cov=fastapi_has_permissions --cov-report=xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5.5.2
+        uses: codecov/codecov-action@v5.5.3
         with:
           files: ./coverage.xml
         env:
