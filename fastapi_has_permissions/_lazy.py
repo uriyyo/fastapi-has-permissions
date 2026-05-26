@@ -75,7 +75,7 @@ async def _solve_dependencies_for_dependant(
         dependency_cache=dependency_cache,
         background_tasks=cast("BackgroundTasks", response.background),
         response=response,
-        dependency_overrides_provider=route.dependency_overrides_provider,
+        dependency_overrides_provider=route.dependency_overrides_provider,  # type: ignore[ty:unresolved-attribute]
         async_exit_stack=astack,
         embed_body_fields=route._embed_body_fields,  # noqa: SLF001
     )
