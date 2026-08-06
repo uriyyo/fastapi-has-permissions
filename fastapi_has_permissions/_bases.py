@@ -22,7 +22,7 @@ class IdentityHashMixin:
         if kwargs.get("no_hash_override", False):
             return
 
-        cls.__hash__ = _identity_hash  # type: ignore[ty:invalid-assignment]
+        cls.__hash__ = _identity_hash
 
 
 @dataclass
