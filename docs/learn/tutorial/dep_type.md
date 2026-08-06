@@ -6,9 +6,14 @@ different data sources.
 
 ## What Is `Dep`?
 
-`Dep` is a generic type from `fastapi_has_permissions`. When a permission class has a field typed
-as `Dep[T]`, the library treats it as a FastAPI dependency that should be resolved at request time. The
-resolved value is passed as a positional argument to `check_permissions`.
+`Dep` is re-exported from [`fastapi-injected`](https://github.com/uriyyo/fastapi-injected), where it is
+defined as `Annotated[T, Depends()]`. When a permission class has a field typed as `Dep[T]`, the library
+treats it as a FastAPI dependency that should be resolved at request time. The resolved value is passed
+as a positional argument to `check_permissions`.
+
+The bare `Depends()` in the annotation is what marks the field as a *slot* you fill in at construction
+time. An ordinary `Annotated[T, Depends(some_func)]` field is not a slot -- it already names its
+dependency, so FastAPI resolves it on its own.
 
 `Dep` accepts a type argument to indicate the expected resolved type:
 
@@ -81,6 +86,26 @@ comment_router = APIRouter(
 
 Both routers use the same `BelongsToSameWorkspace` permission, but each provides a different dependency
 to load the resource.
+
+## Building Dependencies With `DepFactory`
+
+`DepFactory` is also re-exported from `fastapi-injected` and is a shorthand for building the annotated
+dependencies you pass into `Dep` slots -- `DepFactory[T, func]` is exactly `Annotated[T, Depends(func)]`:
+
+```python
+from fastapi_has_permissions import DepFactory
+
+ArticleDep = DepFactory[Article, get_article]
+CommentDep = DepFactory[Comment, get_comment]
+
+article_router = APIRouter(
+    prefix="/articles",
+    dependencies=[Depends(BelongsToSameWorkspace(ArticleDep))],
+)
+```
+
+Any form FastAPI understands works in a `Dep` slot -- `DepFactory[...]`, a plain
+`Annotated[T, Depends(func)]`, or a bare `Depends(func)`.
 
 ## Multiple `Dep` Fields
 

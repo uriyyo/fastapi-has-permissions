@@ -99,14 +99,14 @@ async def admin_endpoint():
 Function-based permissions also support `Dep` arguments for injecting FastAPI dependencies:
 
 ```python
-from fastapi_has_permissions import Dep, permission
+from fastapi_has_permissions import Dep, DepFactory, permission
 
 
 async def get_admin_role() -> str:
     return "admin"
 
 
-AdminRoleDep = Annotated[str, Depends(get_admin_role)]
+AdminRoleDep = DepFactory[str, get_admin_role]  # == Annotated[str, Depends(get_admin_role)]
 
 
 @permission
@@ -142,3 +142,6 @@ Depends(lazy(AgeIsMoreThan(age=18), skip_on_exc=(RequestValidationError,)))
 - **Skip / Fail helpers** -- call `skip()` or `fail()` inside `check_permissions()` for explicit control flow
 - **Built-in common permissions** -- `IsAuthenticated`, `HasScope`, `HasRole` ready to use with your auth dependencies
 - **Full FastAPI DI support** -- `check_permissions()` accepts any FastAPI-injectable parameters
+- **Built on [fastapi-injected](https://github.com/uriyyo/fastapi-injected)** -- `Dep` / `DepFactory` are
+  re-exported from it, and lazy permissions resolve through its inject scope, so they share the request's
+  dependency cache with the route

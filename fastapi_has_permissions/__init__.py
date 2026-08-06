@@ -1,4 +1,5 @@
-from ._dep import Dep
+from fastapi_injected import Dep, DepFactory
+
 from ._func import permission
 from ._lazy import LazyPermission, lazy
 from ._permissions import AllPermissions, AnyPermissions, NotPermission, Permission, PermissionWrapper
@@ -9,6 +10,7 @@ __all__ = [
     "AnyPermissions",
     "CheckResult",
     "Dep",
+    "DepFactory",
     "Failed",
     "LazyPermission",
     "NotPermission",
