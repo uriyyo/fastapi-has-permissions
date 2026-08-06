@@ -73,6 +73,7 @@ ignore = [
     "FIX", # ignore FIXMEs
     "TD", # ignore all TODOs
     "FA", # ignore future annotations
+    "CPY001", # ignore copyright
 
     #    "ANN", # ignore annotations
     #    "ARG", # ignore unused arguments
