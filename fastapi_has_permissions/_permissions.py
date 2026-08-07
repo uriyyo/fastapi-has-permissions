@@ -7,10 +7,10 @@ from dataclasses import field, fields
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, final
 
 from fastapi import Depends
+from fastapi_injected import is_dep
 from typing_extensions import Self
 
 from ._bases import ForceDataclass, IdentityHashMixin, SignatureOverride
-from ._dep import is_dep
 from ._deps_args import (
     get_dep_arg_name,
     get_signature_with_deps,

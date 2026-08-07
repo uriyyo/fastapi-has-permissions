@@ -4,8 +4,7 @@ from functools import partial
 from typing import Any, TypeVar, overload
 
 from fastapi.dependencies.utils import get_typed_signature
-
-from fastapi_has_permissions._dep import is_dep, unwrap_dep
+from fastapi_injected import is_dep, unwrap_dep_tp
 
 from ._deps_args import get_signature_with_deps
 from ._permissions import Permission
@@ -25,7 +24,7 @@ def _func_deps(func: AsyncFunc, /) -> Iterable[Dep]:
                 msg = f"All dependencies must be defined before non-dependencies in {func!r}"
                 raise TypeError(msg)
 
-            yield unwrap_dep(param.annotation)
+            yield unwrap_dep_tp(param.annotation)
         else:
             deps_ended = True
 
