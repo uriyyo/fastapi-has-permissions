@@ -4,11 +4,10 @@ import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from dataclasses import field, fields
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, final
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Self, final
 
 from fastapi import Depends
 from fastapi_injected import is_dep
-from typing_extensions import Self
 
 from ._bases import ForceDataclass, IdentityHashMixin, SignatureOverride
 from ._deps_args import (

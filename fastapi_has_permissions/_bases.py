@@ -1,9 +1,7 @@
 import inspect
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
-
-from typing_extensions import dataclass_transform
+from typing import Any, dataclass_transform
 
 
 def _identity_hash(self: Any) -> int:

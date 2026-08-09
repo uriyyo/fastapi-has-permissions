@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, NoReturn, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, NoReturn, TypeVar
 
 from typing_extensions import TypeIs
 
@@ -36,7 +36,7 @@ class Failed:
         return False
 
 
-CheckResult: TypeAlias = bool | Skipped | Failed
+type CheckResult = bool | Skipped | Failed
 
 
 def is_skipped(result: CheckResult) -> TypeIs[Skipped]:

@@ -9,12 +9,12 @@ _TAny = TypeVar("_TAny", default=Any)
 Args: TypeAlias = tuple[_TAny, ...]
 Kwargs: TypeAlias = dict[str, _TAny]
 
-Deps: TypeAlias = Sequence[Dep[Any]]
+type Deps = Sequence[Dep[Any]]
 
 Func: TypeAlias = Callable[..., _TAny]
 AsyncFunc: TypeAlias = Callable[..., Coroutine[Any, Any, _TAny]]
 
-Exceptions: TypeAlias = tuple[type[BaseException], ...]
+type Exceptions = tuple[type[BaseException], ...]
 
 __all__ = [
     "Args",

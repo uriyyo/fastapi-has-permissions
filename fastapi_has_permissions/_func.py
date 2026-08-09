@@ -51,7 +51,7 @@ class FuncPermission(Permission):
 
 
 @overload
-def permission(arg: TAsyncFunc, /) -> Callable[..., FuncPermission]:
+def permission[TAsyncFunc: AsyncFunc](arg: TAsyncFunc, /) -> Callable[..., FuncPermission]:
     pass
 
 
@@ -66,7 +66,7 @@ def permission(
     pass
 
 
-def permission(
+def permission[TAsyncFunc: AsyncFunc](
     arg: TAsyncFunc | None = None,
     /,
     *,
@@ -79,7 +79,7 @@ def permission(
     return _permission_factory(arg, message=message, status_code=status_code)
 
 
-def _permission_factory(
+def _permission_factory[TAsyncFunc: AsyncFunc](
     arg: TAsyncFunc,
     message: str | None = None,
     status_code: int | None = None,

@@ -116,12 +116,12 @@ def lazy(
 
 
 @overload
-def lazy(cls: TCls, /) -> TCls:
+def lazy[TCls: type[Permission]](cls: TCls, /) -> TCls:
     pass
 
 
 @overload
-def lazy(
+def lazy[TPermission: Permission](
     permission: TPermission,
     /,
     *,

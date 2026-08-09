@@ -49,7 +49,7 @@ def signature_with_params(params: Iterable[inspect.Parameter]) -> inspect.Signat
 TAsyncFunc = TypeVar("TAsyncFunc", bound=AsyncFunc)
 
 
-def remap_deps_args(func: TAsyncFunc) -> TAsyncFunc:
+def remap_deps_args[TAsyncFunc: AsyncFunc](func: TAsyncFunc) -> TAsyncFunc:
     @wraps(func)
     async def wrapper(self: Any, **kwargs: Any) -> Any:
         _kwargs = kwargs.copy()
