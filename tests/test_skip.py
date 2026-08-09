@@ -216,11 +216,12 @@ def app_client() -> Iterator[TestClient]:
             status.HTTP_200_OK,
             id="complex-skip-invalid-token-but-has-auth-header",
         ),
+        # skip is "no opinion": SkipIfNoToken abstains, so HasRole alone decides the `&` branch
         pytest.param(
             "/complex-skip",
             {"role": "admin"},
-            status.HTTP_403_FORBIDDEN,
-            id="complex-skip-admin-role-no-auth-skips-token-check",
+            status.HTTP_200_OK,
+            id="complex-skip-admin-role-no-auth-token-check-abstains",
         ),
     ],
 )

@@ -18,9 +18,13 @@ class HTTPExcRaiser:
     def get_exc_status_code(self) -> int:
         return self.status_code or self.default_exc_status_code
 
-    def raise_http_exception(self, message: str | None) -> NoReturn:
+    def raise_http_exception(
+        self,
+        message: str | None,
+        status_code: int | None = None,
+    ) -> NoReturn:
         raise HTTPException(
-            status_code=self.get_exc_status_code(),
+            status_code=self.status_code or status_code or self.default_exc_status_code,
             detail=message or self.get_exc_message(),
         )
 

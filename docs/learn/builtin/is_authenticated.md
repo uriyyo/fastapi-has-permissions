@@ -72,10 +72,7 @@ from fastapi_has_permissions.common import IsAuthenticated, HasRole
 
 
 # Must be authenticated AND have admin role
-Depends(
-    IsAuthenticated(Depends(get_is_authenticated))
-    & HasRole(Depends(get_role), roles=["admin"])
-)
+Depends(IsAuthenticated(Depends(get_is_authenticated)) & HasRole(Depends(get_role), roles=["admin"]))
 ```
 
 !!! tip

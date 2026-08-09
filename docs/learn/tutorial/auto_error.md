@@ -192,6 +192,7 @@ from fastapi_has_permissions.common import no_auto_error
 
 composed = HasAuthorizationHeader() & HasAdminRole()
 
+
 @app.get("/check")
 async def check(
     *,

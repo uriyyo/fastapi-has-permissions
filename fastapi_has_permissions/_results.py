@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, NoReturn, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, NoReturn, TypeVar
 
 from typing_extensions import TypeIs
 
@@ -31,6 +31,7 @@ class Skipped:
 @dataclass
 class Failed:
     reason: str | None = None
+    status_code: int | None = None
 
     def __bool__(self) -> bool:
         return False
@@ -43,11 +44,11 @@ def is_skipped(result: CheckResult) -> TypeIs[Skipped]:
     return isinstance(result, Skipped)
 
 
-def is_failed(result: CheckResult) -> TypeIs[Failed | bool]:
+def is_failed(result: CheckResult) -> TypeIs[Failed | Literal[False]]:
     return isinstance(result, Failed) or result is False
 
 
-def is_successful(result: CheckResult) -> TypeIs[bool]:
+def is_successful(result: CheckResult) -> TypeIs[Literal[True]]:
     return result is True
 
 
@@ -71,13 +72,19 @@ async def call_permissions_check(
     try:
         result = await permission.check_permissions(*args, **kwargs)
     except PermissionCheckFailed as exc:
-        return Failed(reason=exc.reason or permission.get_exc_message())
+        return Failed(
+            reason=exc.reason or permission.get_exc_message(),
+            status_code=permission.get_exc_status_code(),
+        )
     except SkipPermissionCheck as exc:
         return Skipped(reason=exc.reason)
 
     match result:
         case False:
-            return Failed(reason=permission.get_exc_message())
+            return Failed(
+                reason=permission.get_exc_message(),
+                status_code=permission.get_exc_status_code(),
+            )
         case _:
             return result
 

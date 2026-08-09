@@ -74,6 +74,31 @@ Depends(HasAuthorizationHeader() | HasRole("admin"))
 Depends(~HasAuthorizationHeader())
 ```
 
+When a composed check fails, the failing permission's message and status code are
+propagated: `&` reports the first failing permission, and `|` combines the failure
+reasons of all branches when none of them passed.
+
+Skipped permissions (see `skip()`) are ignored by `&` and `|` — the remaining
+permissions decide the outcome. A composite where _every_ permission skipped is
+itself skipped, and `~` passes a skip through unchanged:
+
+| Expression     | Result                              |
+| -------------- | ----------------------------------- |
+| `Pass & Skip`  | pass                                |
+| `Fail & Skip`  | fail (with `Fail`'s message/status) |
+| `Skip & Skip`  | skip                                |
+| `Fail \| Skip` | fail                                |
+| `Pass \| Skip` | pass                                |
+| `Skip \| Skip` | skip                                |
+| `~Skip`        | skip                                |
+
+A permission that resolves to skipped never blocks the request.
+
+> **Note:** every permission instance is a distinct FastAPI dependency (identity-based
+> hashing), so two equal instances are resolved and checked independently within one
+> request. Reuse the same instance when you want FastAPI's per-request dependency
+> cache to apply.
+
 ### Function-Based Permissions
 
 Use the `@permission` decorator for a lightweight alternative:

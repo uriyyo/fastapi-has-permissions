@@ -18,7 +18,7 @@ from ._deps_args import (
 )
 from ._errors import HTTPExcRaiser
 from ._resolvers import PermissionResolver, Resolvable, ResolvedPermission
-from ._results import CheckResult, Failed, Skipped, is_skipped
+from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, is_successful
 from .types import AsyncFunc, Dep
 
 
@@ -77,11 +77,13 @@ class Permission(
     @remap_deps_args
     async def __call__(self, permission: ResolvedPermission) -> CheckResult:
         message: str | None = None
+        status_code: int | None = None
         result: bool
 
         match ret := await permission.check_permissions():
-            case Failed(reason=reason):
+            case Failed(reason=reason, status_code=failed_status_code):
                 message = reason
+                status_code = failed_status_code
                 result = False
             case False:
                 message = self.get_exc_message()
@@ -90,7 +92,7 @@ class Permission(
                 result = True
 
         if self.auto_error and not result:
-            self.raise_http_exception(message)
+            self.raise_http_exception(message, status_code)
 
         return ret
 
@@ -145,7 +147,7 @@ class AnyPermissions(_AllAnyPermissions):
         return self._merge_permissions(other, AnyPermissions)
 
     async def check_permissions(self, *permissions: ResolvedPermission) -> CheckResult:
-        only_skips = True
+        failures: list[Failed] = []
 
         for permission in permissions:
             result = await permission.check_permissions()
@@ -153,15 +155,23 @@ class AnyPermissions(_AllAnyPermissions):
             if is_skipped(result):
                 continue
 
-            only_skips = False
-
-            if result:
+            if is_successful(result):
                 return True
 
-        if only_skips:
-            return Skipped()
+            match result:
+                case Failed():
+                    failures.append(result)
+                case _:
+                    failures.append(Failed())
 
-        return False
+        match failures:
+            case []:
+                return Skipped()
+            case [failed]:
+                return failed
+            case _:
+                reasons = [failed.reason for failed in failures if failed.reason]
+                return Failed(reason="; ".join(reasons) or None)
 
 
 @final
@@ -175,19 +185,19 @@ class AllPermissions(_AllAnyPermissions):
         return self._merge_permissions(other, AllPermissions)
 
     async def check_permissions(self, *permissions: ResolvedPermission) -> CheckResult:
-        only_skips = False
+        skipped = 0
 
         for permission in permissions:
             result = await permission.check_permissions()
 
             if is_skipped(result):
-                only_skips = True
+                skipped += 1
                 continue
 
-            if not result:
-                return False
+            if is_failed(result):
+                return result
 
-        if only_skips:
+        if permissions and skipped == len(permissions):
             return Skipped()
 
         return True

@@ -125,6 +125,36 @@ async def route_admin_or_moderator_role() -> str:
 
 
 @app.get(
+    "/has-role-from-generator",
+    dependencies=[
+        Depends(
+            HasRole(
+                Depends(get_role),
+                roles=(role for role in ["admin"]),
+            ),
+        ),
+    ],
+)
+async def route_has_role_from_generator() -> str:
+    return "You have access to this endpoint!"
+
+
+@app.get(
+    "/has-role-from-str",
+    dependencies=[
+        Depends(
+            HasRole(
+                Depends(get_role),
+                roles="admin",
+            ),
+        ),
+    ],
+)
+async def route_has_role_from_str() -> str:
+    return "You have access to this endpoint!"
+
+
+@app.get(
     "/not-admin",
     dependencies=[
         Depends(
@@ -301,6 +331,32 @@ def app_client() -> Iterator[TestClient]:
             {},
             status.HTTP_403_FORBIDDEN,
             id="admin-or-moderator-fail-no-role",
+        ),
+        # roles/scopes are normalized to frozensets, so one-shot iterables keep working
+        pytest.param(
+            "/has-role-from-generator",
+            {"x-role": "admin"},
+            status.HTTP_200_OK,
+            id="has-role-generator-first-request",
+        ),
+        pytest.param(
+            "/has-role-from-generator",
+            {"x-role": "admin"},
+            status.HTTP_200_OK,
+            id="has-role-generator-second-request-not-consumed",
+        ),
+        # a plain string is a single role, not an iterable of characters
+        pytest.param(
+            "/has-role-from-str",
+            {"x-role": "admin"},
+            status.HTTP_200_OK,
+            id="has-role-str-pass",
+        ),
+        pytest.param(
+            "/has-role-from-str",
+            {"x-role": "a"},
+            status.HTTP_403_FORBIDDEN,
+            id="has-role-str-not-treated-as-chars",
         ),
         pytest.param(
             "/not-admin",

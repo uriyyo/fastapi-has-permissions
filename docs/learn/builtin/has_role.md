@@ -82,15 +82,10 @@ Use boolean composition for complex role-based access control:
 
 ```python
 # Admin OR moderator (equivalent to roles=["admin", "moderator"])
-Depends(
-    HasRole(Depends(get_role), roles=["admin"])
-    | HasRole(Depends(get_role), roles=["moderator"])
-)
+Depends(HasRole(Depends(get_role), roles=["admin"]) | HasRole(Depends(get_role), roles=["moderator"]))
 
 # NOT admin (deny admins)
-Depends(
-    ~HasRole(Depends(get_role), roles=["admin"])
-)
+Depends(~HasRole(Depends(get_role), roles=["admin"]))
 ```
 
 ## How `check_permissions` Works

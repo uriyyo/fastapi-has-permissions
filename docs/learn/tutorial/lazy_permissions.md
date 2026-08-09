@@ -106,6 +106,7 @@ from fastapi_has_permissions.types import Exceptions
 
 class GracefulLazyPermission(LazyPermission):
     """Base class that skips on validation errors."""
+
     skip_on_exc: Exceptions = field(default=(RequestValidationError,), kw_only=True)
 
 

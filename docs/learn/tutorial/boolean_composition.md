@@ -89,9 +89,7 @@ You can combine operators to build sophisticated access rules:
 @app.get(
     "/complex",
     dependencies=[
-        Depends(
-            (HasAuthorizationHeader() & HasAdminRole()) | ~HasAdminRole()
-        ),
+        Depends((HasAuthorizationHeader() & HasAdminRole()) | ~HasAdminRole()),
     ],
 )
 async def complex_route():
@@ -121,6 +119,7 @@ class HasServiceToken(Permission):
 
 class IsPrivilegedUser(PermissionWrapper):
     """Allows access for staff members or service tokens."""
+
     permission: Permission = IsStaff() | HasServiceToken()
 ```
 

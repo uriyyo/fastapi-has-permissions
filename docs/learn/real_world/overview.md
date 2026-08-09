@@ -151,13 +151,11 @@ router = APIRouter(
 
 
 @router.get("")
-async def list_articles():
-    ...
+async def list_articles(): ...
 
 
 @router.get("/{article_id}")
-async def get_article(article_id: UUID):
-    ...
+async def get_article(article_id: UUID): ...
 
 
 # Admin-only endpoints on the same prefix
@@ -168,13 +166,11 @@ admin_router = APIRouter(
 
 
 @admin_router.delete("/{article_id}")
-async def delete_article(article_id: UUID):
-    ...
+async def delete_article(article_id: UUID): ...
 
 
 @admin_router.post("/{article_id}/publish")
-async def publish_article(article_id: UUID):
-    ...
+async def publish_article(article_id: UUID): ...
 
 
 # Nest admin under main router
@@ -194,11 +190,7 @@ from app.permissions.articles import IsArticleAuthor, BelongsToSameWorkspace, Ar
 router = APIRouter(
     prefix="/articles",
     dependencies=[
-        Depends(
-            IsPrivilegedUser()
-            | IsArticleAuthor()
-            | (IsEditor() & BelongsToSameWorkspace(ArticleDep))
-        ),
+        Depends(IsPrivilegedUser() | IsArticleAuthor() | (IsEditor() & BelongsToSameWorkspace(ArticleDep))),
     ],
 )
 ```
@@ -229,8 +221,7 @@ router = APIRouter(
 
 
 @router.get("/invoices")
-async def list_invoices():
-    ...
+async def list_invoices(): ...
 
 
 @router.post(
@@ -238,8 +229,7 @@ async def list_invoices():
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(HasServiceToken())],  # extra: must also have a service token
 )
-async def report_usage():
-    ...
+async def report_usage(): ...
 ```
 
 ## Summary

@@ -101,10 +101,7 @@ class HasScope(Permission):
         /,
         security_scopes: SecurityScopes,
     ) -> bool:
-        return all(
-            required_scope in current_scopes
-            for required_scope in security_scopes.scopes
-        )
+        return all(required_scope in current_scopes for required_scope in security_scopes.scopes)
 ```
 
 The `security_scopes: SecurityScopes` parameter is automatically provided by FastAPI's security system

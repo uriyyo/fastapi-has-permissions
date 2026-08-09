@@ -4,11 +4,17 @@ from typing import Any
 from fastapi import Security
 from fastapi.security import SecurityScopes
 
-from fastapi_has_permissions import PermissionWrapper
-
-from ._permissions import Permission
+from ._permissions import Permission, PermissionWrapper
 from ._resolvers import PermissionResolver
 from .types import Dep
+
+
+def _to_frozenset(value: Iterable[str], /) -> frozenset[str]:
+    match value:
+        case str():
+            return frozenset((value,))
+        case _:
+            return frozenset(value)
 
 
 class IsAuthenticated(Permission):
@@ -22,6 +28,10 @@ class HasScope(Permission):
     scope_dep: Dep
     scopes: Iterable[str]
 
+    def __post_init__(self) -> None:
+        self.scopes = _to_frozenset(self.scopes)
+        super().__post_init__()
+
     def __resolver_to_depends__(self, resolver: PermissionResolver) -> Any:
         return Security(resolver, scopes=[*self.scopes])
 
@@ -32,6 +42,10 @@ class HasScope(Permission):
 class HasRole(Permission):
     role_dep: Dep
     roles: Iterable[str]
+
+    def __post_init__(self) -> None:
+        self.roles = _to_frozenset(self.roles)
+        super().__post_init__()
 
     async def check_permissions(self, current_role: str, /) -> bool:
         return current_role in self.roles
