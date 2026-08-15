@@ -14,10 +14,17 @@ def _identity_hash(self: Any) -> int:
 # In general, we need to add __hash__ method cause it required by fastapi's dependency injection system
 # for object to be hashable to be used as a dependency.
 class IdentityHashMixin:
-    def __init_subclass__(cls, **kwargs: Any) -> None:
+    def __init_subclass__(
+        cls,
+        *,
+        no_hash_override: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        # consumed here rather than forwarded, otherwise it reaches
+        # object.__init_subclass__ and raises TypeError
         super().__init_subclass__(**kwargs)
 
-        if kwargs.get("no_hash_override", False):
+        if no_hash_override:
             return
 
         cls.__hash__ = _identity_hash
@@ -39,9 +46,12 @@ _dataclass_params = {"init", "repr", "eq", "order", "unsafe_hash", "frozen", "ma
 @dataclass_transform(field_specifiers=(field,))
 class ForceDataclass:
     def __init_subclass__(cls, **kwargs: Any) -> None:
+        # consumed here rather than forwarded, otherwise they reach
+        # object.__init_subclass__ and raise TypeError
+        dt_kwargs = {param: kwargs.pop(param) for param in _dataclass_params & kwargs.keys()}
+
         super().__init_subclass__(**kwargs)
 
-        dt_kwargs = {param: kwargs[param] for param in _dataclass_params & kwargs.keys()}
         dataclass(cls, **dt_kwargs)
 
 
