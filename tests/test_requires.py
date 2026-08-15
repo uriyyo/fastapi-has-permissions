@@ -271,12 +271,13 @@ class TestWithAPolicy:
         assert requires.dependency.requirement is ReadOnly.archive
 
     def test_a_policy_class_is_rejected(self) -> None:
+        # a type error too, but the runtime guard is what an unchecked caller hits
         with pytest.raises(TypeError, match="takes a policy instance, not the class"):
-            Requires(ReadOnly)
+            Requires(ReadOnly)  # type: ignore[ty:invalid-argument-type]
 
     def test_a_bare_resource_dependency_is_rejected(self) -> None:
         with pytest.raises(TypeError, match="needs a permission or a policy"):
-            Requires(DocDep)
+            Requires(DocDep)  # type: ignore[ty:invalid-argument-type]
 
     def test_a_plain_function_resource_is_not_bound_to_the_policy(self) -> None:
         # a function assigned in the class body must not arrive as a bound method,

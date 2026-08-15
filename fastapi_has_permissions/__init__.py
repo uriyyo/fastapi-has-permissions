@@ -1,5 +1,3 @@
-from fastapi_injected import Dep, DepFactory
-
 from ._app import add_permissions
 from ._evaluate import Evaluate, PermissionEvaluator, evaluate
 from ._func import permission
@@ -18,6 +16,7 @@ from ._wrappers import (
     SkipOnExc,
     WithError,
 )
+from .types import Dep, DepFactory, Resource
 
 __all__ = [
     "Advisory",
@@ -39,6 +38,7 @@ __all__ = [
     "PermissionWrapper",
     "Policy",
     "Requires",
+    "Resource",
     "ResultMapper",
     "SkipOnExc",
     "Skipped",

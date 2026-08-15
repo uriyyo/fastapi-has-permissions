@@ -1,14 +1,14 @@
-from collections.abc import Callable, Generator
-from typing import TYPE_CHECKING, ClassVar, Generic, Self, cast
+from collections.abc import Generator
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Self, cast
 
 from fastapi import Request
 from fastapi_injected import resolve
-from fastapi_injected.types import DepReturn
 from typing_extensions import TypeVar
 
 from ._bases import ForceDataclass
 from ._permissions import Permission
 from .common import Deny
+from .types import Resource
 
 TResource = TypeVar("TResource", default=None)
 
@@ -20,7 +20,9 @@ class _DefaultResource:
 
 class Policy(ForceDataclass, Generic[TResource]):
     if TYPE_CHECKING:
-        __resource__: ClassVar[Callable[..., DepReturn[TResource]]]
+        # a `ClassVar` may not reference `TResource`, so the resource type is tied to the
+        # policy through `bind` and `Requires` rather than through this declaration
+        __resource__: ClassVar[Resource[Any]]
     else:
         __resource__ = _DefaultResource()
 
@@ -31,7 +33,7 @@ class Policy(ForceDataclass, Generic[TResource]):
     default: ClassVar[Permission] = Deny()
 
     @classmethod
-    def bind(cls, resource_dep: Callable[..., DepReturn[TResource]]) -> type[Self]:
+    def bind(cls, resource_dep: Resource[TResource]) -> type[Self]:
         class _BoundedPolicy(cls):  # type: ignore[ty:shadowed-type-variable,ty:unsupported-base]
             __resource__ = resource_dep
 
