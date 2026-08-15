@@ -1,7 +1,7 @@
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, ClassVar
 
-from fastapi import Security
+from fastapi import Security, status
 from fastapi.security import SecurityScopes
 
 from ._permissions import Permission, PermissionWrapper
@@ -19,6 +19,10 @@ def _to_frozenset(value: Iterable[str], /) -> frozenset[str]:
 
 class IsAuthenticated(Permission):
     authentication_dep: Dep
+
+    default_exc_message: ClassVar[str] = "Not authenticated"
+    default_exc_status_code: ClassVar[int] = status.HTTP_401_UNAUTHORIZED
+    default_exc_headers: ClassVar[dict[str, str] | None] = {"WWW-Authenticate": "Bearer"}
 
     async def check_permissions(self, is_authenticated: bool, /) -> bool:  # noqa: FBT001
         return is_authenticated

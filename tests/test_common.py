@@ -5,6 +5,7 @@ import pytest
 from fastapi import Depends, FastAPI, Header, status
 from fastapi.testclient import TestClient
 
+from fastapi_has_permissions import add_permissions
 from fastapi_has_permissions.common import HasRole, HasScope, IsAuthenticated
 
 
@@ -24,6 +25,7 @@ async def get_role(x_role: Annotated[str | None, Header()] = None) -> str:
 
 
 app = FastAPI()
+add_permissions(app)
 
 
 @app.get(
@@ -181,10 +183,11 @@ def app_client() -> Iterator[TestClient]:
             status.HTTP_200_OK,
             id="is-authenticated-pass",
         ),
+        # authentication failures are 401, not 403
         pytest.param(
             "/is-authenticated",
             {},
-            status.HTTP_403_FORBIDDEN,
+            status.HTTP_401_UNAUTHORIZED,
             id="is-authenticated-fail-no-header",
         ),
         pytest.param(
@@ -299,13 +302,13 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/authenticated-and-admin",
             {"x-role": "admin"},
-            status.HTTP_403_FORBIDDEN,
+            status.HTTP_401_UNAUTHORIZED,
             id="authenticated-and-admin-fail-not-authenticated",
         ),
         pytest.param(
             "/authenticated-and-admin",
             {},
-            status.HTTP_403_FORBIDDEN,
+            status.HTTP_401_UNAUTHORIZED,
             id="authenticated-and-admin-fail-neither",
         ),
         pytest.param(

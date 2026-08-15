@@ -7,6 +7,7 @@ from dataclasses import field, fields
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Self, final
 
 from fastapi import Depends
+from fastapi.dependencies.utils import get_typed_signature
 from fastapi_injected import is_dep
 
 from ._bases import ForceDataclass, IdentityHashMixin, SignatureOverride
@@ -17,7 +18,12 @@ from ._deps_args import (
     signature_with_params,
 )
 from ._errors import HTTPExcRaiser
-from ._resolvers import PermissionResolver, Resolvable, ResolvedPermission
+from ._resolvers import (
+    PermissionResolver,
+    Resolvable,
+    ResolvedPermission,
+    lazy_check_permission,
+)
 from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, is_successful
 from .types import AsyncFunc, Dep
 
@@ -78,12 +84,13 @@ class Permission(
     async def __call__(self, permission: ResolvedPermission) -> CheckResult:
         message: str | None = None
         status_code: int | None = None
+        code: str | None = None
+        headers: dict[str, str] | None = None
         result: bool
 
         match ret := await permission.check_permissions():
-            case Failed(reason=reason, status_code=failed_status_code):
+            case Failed(reason=reason, status_code=status_code, code=code, headers=headers):
                 message = reason
-                status_code = failed_status_code
                 result = False
             case False:
                 message = self.get_exc_message()
@@ -92,7 +99,7 @@ class Permission(
                 result = True
 
         if self.auto_error and not result:
-            self.raise_http_exception(message, status_code)
+            self.raise_http_exception(message, status_code, code, headers)
 
         return ret
 
@@ -126,9 +133,11 @@ class _AllAnyPermissions(Permission):
         return cls(permissions=[*self.permissions, other])
 
 
-class PermissionWrapper(Permission):
+class _SinglePermission(Permission):
     permission: Permission
 
+
+class PermissionWrapper(_SinglePermission):
     def __check_signature__(self) -> inspect.Signature:
         return signature_with_params([self.permission.__to_sign_param__()])
 
@@ -146,11 +155,14 @@ class AnyPermissions(_AllAnyPermissions):
 
         return self._merge_permissions(other, AnyPermissions)
 
-    async def check_permissions(self, *permissions: ResolvedPermission) -> CheckResult:
+    def __check_signature__(self) -> inspect.Signature:
+        return get_typed_signature(self.check_permissions)
+
+    async def check_permissions(self) -> CheckResult:
         failures: list[Failed] = []
 
-        for permission in permissions:
-            result = await permission.check_permissions()
+        for permission in self.permissions:
+            result = await lazy_check_permission(permission)
 
             if is_skipped(result):
                 continue
@@ -204,11 +216,14 @@ class AllPermissions(_AllAnyPermissions):
 
 
 @final
-class NotPermission(PermissionWrapper):
+class NotPermission(_SinglePermission):
     default_exc_message: ClassVar[str] = "The permission was satisfied, but it should not have been"
 
-    async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
-        result = await permission.check_permissions()
+    def __check_signature__(self) -> inspect.Signature:
+        return get_typed_signature(self.check_permissions)
+
+    async def check_permissions(self) -> CheckResult:
+        result = await lazy_check_permission(self.permission)
 
         if is_skipped(result):
             return result

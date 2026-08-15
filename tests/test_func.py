@@ -6,9 +6,10 @@ from fastapi import Depends, FastAPI, Header, status
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from fastapi_has_permissions import CheckResult, Dep, permission
+from fastapi_has_permissions import CheckResult, Dep, add_permissions, permission
 
 app = FastAPI()
+add_permissions(app)
 
 
 async def has_authorization_header(request: Request) -> CheckResult:
@@ -99,11 +100,13 @@ def app_client() -> Iterator[TestClient]:
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             id="and-test-fail-missing-both",
         ),
+        # `|` short-circuits: the passing first branch means the second branch's
+        # dependencies (role header) are never resolved
         pytest.param(
             "/or-test",
             {"authorization": "Bearer token"},
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            id="or-test-fail-missing-role-header",
+            status.HTTP_200_OK,
+            id="or-test-pass-short-circuit-missing-role-header",
         ),
         pytest.param(
             "/or-test",

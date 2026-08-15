@@ -1,38 +1,20 @@
 import inspect
 from dataclasses import dataclass, field
-from functools import cached_property, partial
-from typing import Annotated, Any, Protocol, TypeVar, cast, overload
+from functools import partial
+from typing import Protocol, TypeVar, cast, overload
 
-from fastapi import Depends, Request
 from fastapi.dependencies.utils import get_typed_signature
-from fastapi.exceptions import RequestValidationError
-from fastapi_injected import init_inject_scope, resolve
-from fastapi_injected.deps import set_inject_dependency_override_provider
 
 from ._bases import ForceDataclass
 from ._permissions import Permission, PermissionWrapper
-from ._resolvers import BaseResolvedPermission, PermissionResolver
+from ._resolvers import BaseResolvedPermission, PermissionResolver, resolve_permission
 from ._results import CheckResult, Skipped, SkipPermissionCheck
 from .types import Exceptions
-
-
-def _to_validation_error(exc: ValueError, /) -> RequestValidationError | None:
-    # fastapi-injected reports unresolvable dependencies as ValueError(errors),
-    # but this library exposes them as RequestValidationError (used by skip_on_exc)
-    match exc.args:
-        case ([dict(), *_] as errors,):
-            return RequestValidationError(errors)
-        case _:
-            return None
 
 
 class LazyResolvedPermission(ForceDataclass, BaseResolvedPermission):
     permission: Permission
     skip_on_exc: Exceptions = ()
-
-    @cached_property
-    def _eager_resolver(self) -> PermissionResolver:
-        return PermissionResolver(self.permission)
 
     async def check_permissions(self) -> CheckResult:
         try:
@@ -43,15 +25,7 @@ class LazyResolvedPermission(ForceDataclass, BaseResolvedPermission):
             return Skipped()
 
     async def _check_permissions(self) -> CheckResult:
-        try:
-            # resolve the permission dependencies against the ambient inject scope,
-            # which is bound to the current request by LazyPermissionResolver
-            final_permission = await resolve(cast("Any", self._eager_resolver))
-        except ValueError as exc:
-            if (validation_error := _to_validation_error(exc)) is None:
-                raise
-
-            raise validation_error from exc
+        final_permission = await resolve_permission(self.permission)
 
         return await final_permission.check_permissions()
 
@@ -62,14 +36,7 @@ class LazyPermissionResolver(PermissionResolver):
     def __get_signature__(self) -> inspect.Signature:
         return get_typed_signature(self.__call__)
 
-    async def __call__(
-        self,
-        request: Request,
-        _scope: Annotated[None, Depends(init_inject_scope)],
-    ) -> BaseResolvedPermission:
-        route = request.scope["route"]
-        set_inject_dependency_override_provider(route.dependency_overrides_provider)
-
+    async def __call__(self) -> BaseResolvedPermission:
         return LazyResolvedPermission(
             permission=self.permission,
             skip_on_exc=self.skip_on_exc,

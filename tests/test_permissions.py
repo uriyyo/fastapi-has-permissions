@@ -6,10 +6,11 @@ import pytest
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import CheckResult, Permission
+from fastapi_has_permissions import CheckResult, Permission, add_permissions
 from fastapi_has_permissions.common import no_auto_error
 
 app = FastAPI()
+add_permissions(app)
 
 
 class HasAuthorizationHeader(Permission):

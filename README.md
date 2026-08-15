@@ -23,6 +23,23 @@ pip install fastapi-has-permissions
 
 ## Usage
 
+### Setup
+
+Call `add_permissions()` on your app — it binds an inject scope to every request, which
+is what lets `|`, `~`, `lazy()` and `Evaluate` resolve their dependencies at check time:
+
+```python
+from fastapi import FastAPI
+
+from fastapi_has_permissions import add_permissions
+
+app = FastAPI()
+add_permissions(app)
+```
+
+`add_permissions()` is idempotent, but it has to be called **before** the routes are
+declared — FastAPI copies the router dependencies into every route at registration time.
+
 ### Class-Based Permissions
 
 Subclass `Permission` and implement `check_permissions()`:
@@ -30,7 +47,7 @@ Subclass `Permission` and implement `check_permissions()`:
 ```python
 from fastapi import Depends, FastAPI, Request
 
-from fastapi_has_permissions import Permission
+from fastapi_has_permissions import Permission, add_permissions
 
 
 class HasAuthorizationHeader(Permission):
@@ -39,6 +56,7 @@ class HasAuthorizationHeader(Permission):
 
 
 app = FastAPI()
+add_permissions(app)
 
 
 @app.get(
@@ -74,9 +92,15 @@ Depends(HasAuthorizationHeader() | HasRole("admin"))
 Depends(~HasAuthorizationHeader())
 ```
 
-When a composed check fails, the failing permission's message and status code are
-propagated: `&` reports the first failing permission, and `|` combines the failure
-reasons of all branches when none of them passed.
+`|` and `~` are **lazy**: each branch's dependencies are resolved at request time,
+one branch at a time, and evaluation short-circuits at the first permission that
+passes — a failing or expensive dependency in a losing branch is never resolved.
+`&` resolves its dependencies eagerly (they all need to pass anyway), which keeps
+them visible in the OpenAPI schema.
+
+When a composed check fails, the failing permission's message, status code, error
+code, and headers are propagated: `&` reports the first failing permission, and `|`
+combines the failure reasons of all branches when none of them passed.
 
 Skipped permissions (see `skip()`) are ignored by `&` and `|` — the remaining
 permissions decide the outcome. A composite where _every_ permission skipped is
@@ -160,10 +184,53 @@ from fastapi_has_permissions import lazy
 Depends(lazy(AgeIsMoreThan(age=18), skip_on_exc=(RequestValidationError,)))
 ```
 
+### Imperative Checks
+
+Use the `Evaluate` dependency to check permissions inside a handler body without
+raising — for branching logic, partial responses, or explicit control:
+
+```python
+from fastapi_has_permissions import Evaluate
+
+
+@app.get("/posts")
+async def list_posts(evaluate: Evaluate):
+    if await evaluate.check(IsAdmin()):
+        return all_posts()
+
+    return public_posts()
+```
+
+`evaluate(perm)` returns the raw `CheckResult`, `evaluate.check(perm)` returns a
+`bool`, and `evaluate.require(perm)` raises the permission's HTTP error on failure.
+
+Outside a request (e.g. in unit tests), the module-level `evaluate()` resolves
+dependencies against a fresh scope — combine it with
+`fastapi_injected.push_overrides` to stub them:
+
+```python
+from fastapi_has_permissions import evaluate
+from fastapi_injected import push_overrides
+
+with push_overrides({get_role: "admin"}):
+    assert await evaluate(HasAdminRole())
+```
+
+### Error Model
+
+- Permissions raise **403** by default; authentication-style permissions can set
+  `default_exc_status_code = 401` and `default_exc_headers = {"WWW-Authenticate": "Bearer"}`
+  (the built-in `IsAuthenticated` does exactly this)
+- Set a machine-readable **error code** (`code=...` / `default_exc_code`) to get a
+  structured body: `{"detail": {"code": "not_admin", "message": "Admin role required"}}`;
+  without a code the body stays a plain string
+- All of message, status code, code, and headers propagate through `&`, `|`, `~`
+
 ### Other Features
 
-- **Custom error responses** -- set `default_exc_message` / `default_exc_status_code` class variables
-  or override `get_exc_message()` / `get_exc_status_code()` methods
+- **Custom error responses** -- set `default_exc_message` / `default_exc_status_code` /
+  `default_exc_code` / `default_exc_headers` class variables or the corresponding
+  `message` / `status_code` / `code` / `headers` init parameters
 - **Skip / Fail helpers** -- call `skip()` or `fail()` inside `check_permissions()` for explicit control flow
 - **Built-in common permissions** -- `IsAuthenticated`, `HasScope`, `HasRole` ready to use with your auth dependencies
 - **Full FastAPI DI support** -- `check_permissions()` accepts any FastAPI-injectable parameters

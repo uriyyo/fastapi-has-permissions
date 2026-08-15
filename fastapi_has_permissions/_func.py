@@ -1,7 +1,7 @@
 import inspect
 from collections.abc import Callable, Iterable, Sequence
 from functools import partial
-from typing import Any, TypeVar, overload
+from typing import Any, overload
 
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi_injected import is_dep, unwrap_dep_tp
@@ -10,8 +10,6 @@ from ._deps_args import get_signature_with_deps
 from ._permissions import Permission
 from ._results import CheckResult
 from .types import AsyncFunc, Dep
-
-TAsyncFunc = TypeVar("TAsyncFunc", bound=AsyncFunc)
 
 
 def _func_deps(func: AsyncFunc, /) -> Iterable[Dep]:
@@ -56,12 +54,14 @@ def permission[TAsyncFunc: AsyncFunc](arg: TAsyncFunc, /) -> Callable[..., FuncP
 
 
 @overload
-def permission(
+def permission[TAsyncFunc: AsyncFunc](
     arg: None = None,
     /,
     *,
     message: str | None = None,
     status_code: int | None = None,
+    code: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> Callable[[TAsyncFunc], Callable[..., FuncPermission]]:
     pass
 
@@ -72,17 +72,21 @@ def permission[TAsyncFunc: AsyncFunc](
     *,
     message: str | None = None,
     status_code: int | None = None,
+    code: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> Any:
     if arg is None:
-        return partial(permission, message=message, status_code=status_code)
+        return partial(permission, message=message, status_code=status_code, code=code, headers=headers)
 
-    return _permission_factory(arg, message=message, status_code=status_code)
+    return _permission_factory(arg, message=message, status_code=status_code, code=code, headers=headers)
 
 
 def _permission_factory[TAsyncFunc: AsyncFunc](
     arg: TAsyncFunc,
     message: str | None = None,
     status_code: int | None = None,
+    code: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> Callable[..., FuncPermission]:
     def _factory(*deps: Dep) -> FuncPermission:
         return FuncPermission(
@@ -90,6 +94,8 @@ def _permission_factory[TAsyncFunc: AsyncFunc](
             deps=deps,
             message=message,
             status_code=status_code,
+            code=code,
+            headers=headers,
         )
 
     return _factory

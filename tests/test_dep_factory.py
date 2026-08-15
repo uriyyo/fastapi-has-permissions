@@ -5,7 +5,7 @@ import pytest
 from fastapi import Depends, FastAPI, Header
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Dep, DepFactory, Permission, lazy, permission
+from fastapi_has_permissions import Dep, DepFactory, Permission, add_permissions, lazy, permission
 
 
 async def get_role(role: Annotated[str, Header()]) -> str:
@@ -29,6 +29,7 @@ async def role_is(role_dep: Dep[str], /, expected: Annotated[str, Header()]) -> 
 
 
 app = FastAPI()
+add_permissions(app)
 
 
 @app.get("/class-based", dependencies=[Depends(HasRole(RoleDep, "admin"))])

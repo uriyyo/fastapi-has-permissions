@@ -19,7 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "fastapi>=0.141.0",
-    "fastapi-injected>=0.2.0",
+    "fastapi-injected>=0.2.2",
     "typing-extensions>=4.15.0",
 ]
 

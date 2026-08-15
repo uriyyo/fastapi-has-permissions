@@ -4,10 +4,11 @@ import pytest
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Permission
+from fastapi_has_permissions import Permission, add_permissions
 from fastapi_has_permissions._results import SkipPermissionCheck
 
 app = FastAPI()
+add_permissions(app)
 
 
 class AlwaysSkip(Permission):

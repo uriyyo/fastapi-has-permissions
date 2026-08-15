@@ -7,9 +7,10 @@ from fastapi import Depends, FastAPI, Header, Path
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Permission, lazy
+from fastapi_has_permissions import Permission, add_permissions, lazy
 
 app = FastAPI()
+add_permissions(app)
 
 
 @dataclass
@@ -64,6 +65,7 @@ class IsArticleAuthor(Permission):
 
 
 lazy_app = FastAPI()
+add_permissions(lazy_app)
 
 
 @lazy_app.get("/articles/{article_id}", dependencies=[Depends(lazy(IsArticleAuthor()))])
@@ -120,6 +122,7 @@ def test_lazy_shares_dependency_cache_with_route() -> None:
             return value > 0
 
     cache_app = FastAPI()
+    add_permissions(cache_app)
 
     @cache_app.get("/cached", dependencies=[Depends(lazy(UsesCounted()))])
     async def cached(value: Annotated[int, Depends(counted)]) -> int:
@@ -142,6 +145,7 @@ class UsesFailingDep(Permission):
 
 
 error_app = FastAPI()
+add_permissions(error_app)
 
 
 @error_app.get(
