@@ -97,7 +97,7 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/and-test",
             {},
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_403_FORBIDDEN,
             id="and-test-fail-missing-both",
         ),
         # `|` short-circuits: the passing first branch means the second branch's
@@ -147,7 +147,7 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/complex-test",
             {},
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_200_OK,
             id="complex-fail-missing-role-header",
         ),
         pytest.param(

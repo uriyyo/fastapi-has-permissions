@@ -4,7 +4,7 @@ import pytest
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Permission, PermissionWrapper, add_permissions, fail
+from fastapi_has_permissions import AllPermissions, Permission, PermissionWrapper, add_permissions, fail
 from fastapi_has_permissions._results import SkipPermissionCheck
 
 app = FastAPI()
@@ -61,6 +61,18 @@ class ExplicitReason(Permission):
     "/or-single-failure-propagates",
     dependencies=[
         Depends(AlwaysSkip() | ResourceExists()),
+    ],
+)
+@app.get(
+    "/or-two-failures",
+    dependencies=[
+        Depends(ResourceExists() | HasAuthorizationHeader()),
+    ],
+)
+@app.get(
+    "/composite-message-wins",
+    dependencies=[
+        Depends(AllPermissions([AlwaysPass(), ResourceExists()], message="Access denied")),
     ],
 )
 @app.get(
@@ -150,6 +162,27 @@ def app_client() -> Iterator[TestClient]:
             status.HTTP_403_FORBIDDEN,
             "Resource not found",
             id="explicit-wrapper-status-overrides-child-status",
+        ),
+        pytest.param(
+            "/or-two-failures",
+            {},
+            status.HTTP_404_NOT_FOUND,
+            "Resource not found; Permission denied",
+            id="or-multi-failure-keeps-first-branch-status",
+        ),
+        pytest.param(
+            "/or-two-failures",
+            {"resource": "some-resource"},
+            status.HTTP_200_OK,
+            None,
+            id="or-multi-failure-passes-when-branch-passes",
+        ),
+        pytest.param(
+            "/composite-message-wins",
+            {},
+            status.HTTP_404_NOT_FOUND,
+            "Access denied",
+            id="explicit-composite-message-overrides-child-reason",
         ),
     ],
 )

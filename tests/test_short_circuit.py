@@ -46,6 +46,18 @@ add_permissions(app)
         Depends(AlwaysFail() | ExpensivePermission()),
     ],
 )
+@app.get(
+    "/and-short-circuits",
+    dependencies=[
+        Depends(AlwaysFail() & ExpensivePermission()),
+    ],
+)
+@app.get(
+    "/and-reaches-second-branch",
+    dependencies=[
+        Depends(AlwaysPass() & ExpensivePermission()),
+    ],
+)
 async def route() -> str:
     return "You have access to this endpoint!"
 
@@ -69,6 +81,24 @@ def test_or_resolves_branch_when_needed(app_client) -> None:
     calls.clear()
 
     response = app_client.get("/or-reaches-second-branch")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert calls == ["counting_dep"]
+
+
+def test_and_never_resolves_losing_branch(app_client) -> None:
+    calls.clear()
+
+    response = app_client.get("/and-short-circuits")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert calls == []
+
+
+def test_and_resolves_branch_when_needed(app_client) -> None:
+    calls.clear()
+
+    response = app_client.get("/and-reaches-second-branch")
 
     assert response.status_code == status.HTTP_200_OK
     assert calls == ["counting_dep"]

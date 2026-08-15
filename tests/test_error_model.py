@@ -42,6 +42,10 @@ add_permissions(app)
     dependencies=[Depends(HasAuthorizationHeader() & has_admin_role())],
 )
 @app.get(
+    "/coded-error-or-composed",
+    dependencies=[Depends(HasAuthorizationHeader() | has_admin_role())],
+)
+@app.get(
     "/authenticated",
     dependencies=[Depends(IsAuthenticated(Depends(get_is_authenticated)))],
 )
@@ -97,3 +101,14 @@ def test_unauthenticated_is_401_with_challenge(app_client) -> None:
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.headers["WWW-Authenticate"] == "Bearer"
     assert response.json()["detail"] == "Not authenticated"
+
+
+def test_code_survives_multi_branch_aggregation(app_client) -> None:
+    response = app_client.get("/coded-error-or-composed")
+
+    # both branches fail: reasons are joined, and the first failure supplies the code
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json()["detail"] == {
+        "code": "missing_authorization",
+        "message": "Permission denied; Admin role required",
+    }

@@ -6,7 +6,7 @@ import pytest
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import CheckResult, Permission, add_permissions
+from fastapi_has_permissions import AllPermissions, AnyPermissions, CheckResult, Permission, add_permissions
 from fastapi_has_permissions.common import no_auto_error
 
 app = FastAPI()
@@ -222,3 +222,71 @@ def test_auto_error_false(headers, expected_has_auth, app_client) -> None:
     response = app_client.get("/auto-error-test", headers=headers)
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"has_auth": expected_has_auth}
+
+
+def test_flattening_is_associative() -> None:
+    a, b, c = HasRole("a"), HasRole("b"), HasRole("c")
+
+    assert (a | b) | c == AnyPermissions([a, b, c])
+    assert a | (b | c) == AnyPermissions([a, b, c])
+    assert (a & b) & c == AllPermissions([a, b, c])
+    assert a & (b & c) == AllPermissions([a, b, c])
+
+
+def test_flattening_does_not_mix_operators() -> None:
+    a, b, c = HasRole("a"), HasRole("b"), HasRole("c")
+
+    assert a & (b | c) == AllPermissions([a, AnyPermissions([b, c])])
+    assert a | (b & c) == AnyPermissions([a, AllPermissions([b, c])])
+
+
+@pytest.mark.parametrize(
+    "configured",
+    [
+        pytest.param(AnyPermissions([HasRole("a"), HasRole("b")], message="custom"), id="message"),
+        pytest.param(
+            AnyPermissions([HasRole("a"), HasRole("b")], status_code=status.HTTP_404_NOT_FOUND),
+            id="status-code",
+        ),
+        pytest.param(AnyPermissions([HasRole("a"), HasRole("b")], code="custom_code"), id="code"),
+        pytest.param(AnyPermissions([HasRole("a"), HasRole("b")], auto_error=False), id="auto-error"),
+    ],
+)
+def test_configured_composite_is_not_flattened_away(configured) -> None:
+    other = HasRole("c")
+
+    assert (configured | other) == AnyPermissions([configured, other])
+    assert (other | configured) == AnyPermissions([other, configured])
+
+
+def test_plain_composite_is_flattened() -> None:
+    plain = AnyPermissions([HasRole("a"), HasRole("b")])
+    other = HasRole("c")
+
+    assert (plain | other) == AnyPermissions([*plain.permissions, other])
+
+
+def test_permissions_hash_by_identity_by_default() -> None:
+    assert HasRole("admin") == HasRole("admin")
+    assert hash(HasRole("admin")) != hash(HasRole("admin"))
+
+
+def test_no_hash_override_opts_out_of_identity_hash() -> None:
+    class ValueHashed(Permission, no_hash_override=True, unsafe_hash=True):
+        role: str
+
+        async def check_permissions(self) -> bool:
+            return True
+
+    assert ValueHashed("admin") == ValueHashed("admin")
+    assert hash(ValueHashed("admin")) == hash(ValueHashed("admin"))
+
+
+def test_dataclass_kwargs_are_applied() -> None:
+    class Ordered(Permission, order=True):
+        level: int
+
+        async def check_permissions(self) -> bool:
+            return True
+
+    assert Ordered(1) < Ordered(2)

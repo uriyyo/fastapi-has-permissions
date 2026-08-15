@@ -4,7 +4,7 @@ import pytest
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Permission, add_permissions
+from fastapi_has_permissions import Dep, Permission, add_permissions
 from fastapi_has_permissions._results import SkipPermissionCheck
 
 app = FastAPI()
@@ -14,6 +14,19 @@ add_permissions(app)
 class AlwaysSkip(Permission):
     async def check_permissions(self) -> bool:
         raise SkipPermissionCheck(reason="always skip")
+
+
+async def skipping_dep() -> bool:
+    raise SkipPermissionCheck(reason="dependency asked to skip")
+
+
+class SkipsInDependency(Permission):
+    """Skips from within a dependency, before `check_permissions` is ever entered."""
+
+    dep: Dep[bool]
+
+    async def check_permissions(self, value: bool, /) -> bool:  # noqa: FBT001
+        return value
 
 
 class HasAuthorizationHeader(Permission):
@@ -88,6 +101,24 @@ class HasRole(Permission):
     "/not-skip",
     dependencies=[
         Depends(~AlwaysSkip()),
+    ],
+)
+@app.get(
+    "/and-dep-skips-first",
+    dependencies=[
+        Depends(SkipsInDependency(Depends(skipping_dep)) & HasAuthorizationHeader()),
+    ],
+)
+@app.get(
+    "/and-dep-skips-second",
+    dependencies=[
+        Depends(HasAuthorizationHeader() & SkipsInDependency(Depends(skipping_dep))),
+    ],
+)
+@app.get(
+    "/and-dep-skips-all",
+    dependencies=[
+        Depends(SkipsInDependency(Depends(skipping_dep)) & AlwaysSkip()),
     ],
 )
 @app.get(
@@ -223,6 +254,30 @@ def app_client() -> Iterator[TestClient]:
             {"role": "admin"},
             status.HTTP_200_OK,
             id="complex-skip-admin-role-no-auth-token-check-abstains",
+        ),
+        pytest.param(
+            "/and-dep-skips-first",
+            {},
+            status.HTTP_403_FORBIDDEN,
+            id="and-dep-skips-first-then-second-fails",
+        ),
+        pytest.param(
+            "/and-dep-skips-first",
+            {"Authorization": "some-token"},
+            status.HTTP_200_OK,
+            id="and-dep-skips-first-then-second-passes",
+        ),
+        pytest.param(
+            "/and-dep-skips-second",
+            {"Authorization": "some-token"},
+            status.HTTP_200_OK,
+            id="and-dep-skips-second-after-first-passes",
+        ),
+        pytest.param(
+            "/and-dep-skips-all",
+            {},
+            status.HTTP_200_OK,
+            id="and-dep-skips-all-branches-skipped",
         ),
     ],
 )

@@ -28,6 +28,9 @@ class HTTPExcRaiser:
     def get_exc_headers(self) -> dict[str, str] | None:
         return self.headers or self.default_exc_headers
 
+    def has_default_error_config(self) -> bool:
+        return self.message is None and self.status_code is None and self.code is None and self.headers is None
+
     def raise_http_exception(
         self,
         message: str | None,
@@ -35,7 +38,9 @@ class HTTPExcRaiser:
         code: str | None = None,
         headers: dict[str, str] | None = None,
     ) -> NoReturn:
-        detail: Any = message or self.get_exc_message()
+        # all four fields resolve the same way: an explicit value on this instance wins,
+        # then the value propagated from the failing child, then this class default
+        detail: Any = self.message or message or self.default_exc_message
 
         if final_code := self.code or code or self.default_exc_code:
             detail = {"code": final_code, "message": detail}

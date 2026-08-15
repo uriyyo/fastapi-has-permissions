@@ -4,7 +4,7 @@ import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
 from dataclasses import field, fields
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Self, final
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, final
 
 from fastapi import Depends
 from fastapi.dependencies.utils import get_typed_signature
@@ -107,13 +107,13 @@ class Permission(
         if not isinstance(other, Permission):
             return NotImplemented
 
-        return AllPermissions([self, other])
+        return _combine(self, other, AllPermissions)
 
     def __or__(self, other: Permission) -> Permission:
         if not isinstance(other, Permission):
             return NotImplemented
 
-        return AnyPermissions([self, other])
+        return _combine(self, other, AnyPermissions)
 
     def __invert__(self) -> Permission:
         return NotPermission(self)
@@ -123,14 +123,24 @@ class _AllAnyPermissions(Permission):
     permissions: Sequence[Permission]
 
     def __check_signature__(self) -> inspect.Signature:
-        return signature_with_params([permission.__to_sign_param__(i) for i, permission in enumerate(self.permissions)])
+        return get_typed_signature(self.check_permissions)
 
-    def _merge_permissions(self, other: Permission, cls: type[Self]) -> Self:
 
-        if isinstance(other, cls):
-            return cls(permissions=[*self.permissions, *other.permissions])
+def _flatten(permission: Permission, cls: type[_AllAnyPermissions]) -> list[Permission]:
+    # only absorb a same-kind composite that carries no error config of its own,
+    # otherwise flattening would silently discard that config
+    if isinstance(permission, cls) and permission.auto_error and permission.has_default_error_config():
+        return [*permission.permissions]
 
-        return cls(permissions=[*self.permissions, other])
+    return [permission]
+
+
+def _combine[TComposite: _AllAnyPermissions](
+    left: Permission,
+    right: Permission,
+    cls: type[TComposite],
+) -> TComposite:
+    return cls(permissions=[*_flatten(left, cls), *_flatten(right, cls)])
 
 
 class _SinglePermission(Permission):
@@ -148,15 +158,6 @@ class PermissionWrapper(_SinglePermission):
 @final
 class AnyPermissions(_AllAnyPermissions):
     default_exc_message: ClassVar[str] = "None of the permissions were satisfied"
-
-    def __or__(self, other: Permission) -> Permission:
-        if not isinstance(other, Permission):
-            return NotImplemented
-
-        return self._merge_permissions(other, AnyPermissions)
-
-    def __check_signature__(self) -> inspect.Signature:
-        return get_typed_signature(self.check_permissions)
 
     async def check_permissions(self) -> CheckResult:
         failures: list[Failed] = []
@@ -182,25 +183,28 @@ class AnyPermissions(_AllAnyPermissions):
             case [failed]:
                 return failed
             case _:
+                # reasons are aggregated, but status/code/headers cannot be -
+                # the first failing branch wins, so a masking leaf keeps masking
+                first = failures[0]
                 reasons = [failed.reason for failed in failures if failed.reason]
-                return Failed(reason="; ".join(reasons) or None)
+
+                return Failed(
+                    reason="; ".join(reasons) or None,
+                    status_code=first.status_code,
+                    code=first.code,
+                    headers=first.headers,
+                )
 
 
 @final
 class AllPermissions(_AllAnyPermissions):
     default_exc_message: ClassVar[str] = "Not all permissions were satisfied"
 
-    def __and__(self, other: Permission) -> Permission:
-        if not isinstance(other, Permission):
-            return NotImplemented
-
-        return self._merge_permissions(other, AllPermissions)
-
-    async def check_permissions(self, *permissions: ResolvedPermission) -> CheckResult:
+    async def check_permissions(self) -> CheckResult:
         skipped = 0
 
-        for permission in permissions:
-            result = await permission.check_permissions()
+        for permission in self.permissions:
+            result = await lazy_check_permission(permission)
 
             if is_skipped(result):
                 skipped += 1
@@ -209,7 +213,7 @@ class AllPermissions(_AllAnyPermissions):
             if is_failed(result):
                 return result
 
-        if permissions and skipped == len(permissions):
+        if self.permissions and skipped == len(self.permissions):
             return Skipped()
 
         return True
