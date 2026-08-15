@@ -241,6 +241,82 @@ with push_overrides({get_role: "admin"}):
 - A permission's own error config applies when it is the root of the tree; use `WithError(...)`
   to give a nested subtree one error (e.g. a `404` that does not admit the resource exists)
 
+### Policies
+
+A `Policy` groups the rules for one resource, and the request method picks which one runs:
+
+```python
+from fastapi_has_permissions import DepFactory, Policy, Requires
+from fastapi_has_permissions.common import Allow, HasRole
+
+PostDep = DepFactory[Post, get_post]
+
+
+class PostPolicy(Policy[Post]):
+    read = Allow()
+    create = HasRole(RoleDep, "author")
+    update = HasRole(RoleDep, "author")
+    delete = HasRole(RoleDep, "admin")
+
+    __resource__ = PostDep
+```
+
+`GET`/`QUERY`/`HEAD` map to `read`, `POST` to `create`, `PUT`/`PATCH` to `update`, `DELETE`
+to `delete`, and anything else to `default`. All five default to `Deny()`, so a policy
+opens only what it declares.
+
+Attach it once to a router and every route under it is covered by the action matching its
+verb -- which is what the method mapping is for:
+
+```python
+posts = APIRouter(prefix="/posts", dependencies=[Depends(PostPolicy())])
+
+
+@posts.get("")  # -> read
+async def list_posts() -> list[Post]: ...
+
+
+@posts.post("")  # -> create
+async def create_post(body: PostIn) -> Post: ...
+
+
+@posts.delete("/{post_id}")  # -> delete
+async def delete_post(post_id: int) -> None: ...
+```
+
+A route added later is covered the moment it exists, and a verb with no action falls to
+`default`, which denies -- so you cannot leave a route on this router unprotected by
+forgetting something. A router-level policy never resolves `__resource__`, so the collection
+routes are never asked for a `post_id` they do not have.
+
+or with `Requires`, which checks *and* injects the loaded resource:
+
+```python
+@app.get("/posts/{post_id}")
+async def read(post: Annotated[Post, Depends(Requires(PostPolicy()))]) -> Post:
+    return post
+```
+
+The check runs before the resource is resolved and before the handler body, so it cannot be
+skipped. Actions are ordinary permissions, so they compose with `&`/`|`/`~`, take the
+wrappers, and propagate their own error config.
+
+Actions are not limited to CRUD -- declare one and name it at the call site:
+
+```python
+class PostPolicy(Policy[Post]):
+    publish = HasRole(RoleDep, "editor")
+
+    __resource__ = PostDep
+
+
+@app.post("/posts/{post_id}/publish")
+async def publish(post: Annotated[Post, Depends(Requires(PostPolicy(), PostPolicy.publish))]) -> Post:
+    return post
+```
+
+`PostPolicy.bind(OtherDep)` reuses the same rules against a different loader.
+
 ### Other Features
 
 - **Custom error responses** -- set `default_exc_message` / `default_exc_status_code` /
@@ -251,6 +327,8 @@ with push_overrides({get_role: "admin"}):
   gives a whole subtree one error config, `FailOnExc` / `SkipOnExc` keep a broken check from
   turning into a 500
 - **Built-in common permissions** -- `IsAuthenticated`, `HasScope`, `HasRole` ready to use with your auth dependencies
+- **Policies** -- `Policy` groups a resource's rules and dispatches on the request method; `Requires`
+  checks and injects the loaded object for object-level permissions
 - **Full FastAPI DI support** -- `check_permissions()` accepts any FastAPI-injectable parameters
 - **Built on [fastapi-injected](https://github.com/uriyyo/fastapi-injected)** -- `Dep` / `DepFactory` are
   re-exported from it, and lazy permissions resolve through its inject scope, so they share the request's

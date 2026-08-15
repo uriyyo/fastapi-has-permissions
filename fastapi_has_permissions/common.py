@@ -59,7 +59,19 @@ def no_auto_error(permission: Permission) -> PermissionWrapper:
     return PermissionWrapper(permission, auto_error=False)
 
 
+class Allow(Permission):
+    async def check_permissions(self) -> bool:
+        return True
+
+
+class Deny(Permission):
+    async def check_permissions(self) -> bool:
+        return False
+
+
 __all__ = [
+    "Allow",
+    "Deny",
     "HasRole",
     "HasScope",
     "IsAuthenticated",

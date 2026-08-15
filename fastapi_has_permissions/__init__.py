@@ -5,6 +5,8 @@ from ._evaluate import Evaluate, PermissionEvaluator, evaluate
 from ._func import permission
 from ._lazy import LazyPermission, lazy
 from ._permissions import AllPermissions, AnyPermissions, NotPermission, Permission, PermissionWrapper
+from ._policy import Policy
+from ._requires import Requires
 from ._results import CheckResult, Failed, Skipped, fail, is_failed, is_skipped, is_successful, skip
 from ._wrappers import (
     Advisory,
@@ -35,6 +37,8 @@ __all__ = [
     "Permission",
     "PermissionEvaluator",
     "PermissionWrapper",
+    "Policy",
+    "Requires",
     "ResultMapper",
     "SkipOnExc",
     "Skipped",
