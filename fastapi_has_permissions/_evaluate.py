@@ -14,7 +14,7 @@ async def evaluate(permission: Permission, /) -> CheckResult:
 
 class PermissionEvaluator(ForceDataclass, IdentityHashMixin):
     async def __call__(self, permission: Permission, /) -> CheckResult:
-        return await lazy_check_permission(permission)
+        return await evaluate(permission)
 
     async def check(self, permission: Permission, /) -> bool:
         return is_successful(await self(permission))

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, NoReturn, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, NoReturn
 
 from typing_extensions import TypeIs
-
-from .types import AsyncFunc
 
 if TYPE_CHECKING:
     from ._permissions import Permission
@@ -60,9 +58,6 @@ def skip(reason: str | None = None) -> NoReturn:
 
 def fail(reason: str | None = None) -> NoReturn:
     raise PermissionCheckFailed(reason)
-
-
-TAsyncFunc = TypeVar("TAsyncFunc", bound=AsyncFunc)
 
 
 async def call_permissions_check(

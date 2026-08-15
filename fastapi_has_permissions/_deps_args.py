@@ -2,7 +2,7 @@ import inspect
 from collections.abc import Iterable
 from functools import wraps
 from itertools import count, takewhile
-from typing import Annotated, Any, TypeVar, cast
+from typing import Annotated, Any, cast
 
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi.params import Depends
@@ -44,9 +44,6 @@ def get_signature_with_deps(func: Func, deps: Deps) -> inspect.Signature:
 
 def signature_with_params(params: Iterable[inspect.Parameter]) -> inspect.Signature:
     return inspect.Signature(parameters=[*params])
-
-
-TAsyncFunc = TypeVar("TAsyncFunc", bound=AsyncFunc)
 
 
 def remap_deps_args[TAsyncFunc: AsyncFunc](func: TAsyncFunc) -> TAsyncFunc:
