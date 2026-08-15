@@ -6,7 +6,7 @@ from fastapi_injected import resolve
 from fastapi_injected.types import DepReturn
 from typing_extensions import TypeVar
 
-from ._bases import ForceDataclass, IdentityHashMixin
+from ._bases import ForceDataclass
 from ._permissions import Permission
 from .common import Deny
 
@@ -18,7 +18,7 @@ class _DefaultResource:
         return None
 
 
-class Policy(ForceDataclass, IdentityHashMixin, Generic[TResource]):
+class Policy(ForceDataclass, Generic[TResource]):
     if TYPE_CHECKING:
         __resource__: ClassVar[Callable[..., DepReturn[TResource]]]
     else:

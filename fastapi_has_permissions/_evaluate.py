@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from ._bases import ForceDataclass, IdentityHashMixin
+from ._bases import ForceDataclass
 from ._permissions import Permission
 from ._resolvers import lazy_check_permission
 from ._results import CheckResult, Failed, is_skipped, is_successful
@@ -12,7 +12,7 @@ async def evaluate(permission: Permission, /) -> CheckResult:
     return await lazy_check_permission(permission)
 
 
-class PermissionEvaluator(ForceDataclass, IdentityHashMixin):
+class PermissionEvaluator(ForceDataclass):
     async def __call__(self, permission: Permission, /) -> CheckResult:
         return await evaluate(permission)
 

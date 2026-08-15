@@ -10,7 +10,7 @@ from fastapi import Depends
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi_injected import is_dep
 
-from ._bases import ForceDataclass, IdentityHashMixin, SignatureOverride
+from ._bases import ForceDataclass, SignatureOverride
 from ._deps_args import (
     get_dep_arg_name,
     get_signature_with_deps,
@@ -48,7 +48,6 @@ class Permission(
     HTTPExcRaiser,
     Resolvable,
     SignatureOverride,
-    IdentityHashMixin,
     ABC,
 ):
     auto_error: bool = field(default=True, kw_only=True)

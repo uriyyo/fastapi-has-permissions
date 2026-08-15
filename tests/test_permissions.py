@@ -266,9 +266,9 @@ def test_plain_composite_is_flattened() -> None:
     assert (plain | other) == AnyPermissions([*plain.permissions, other])
 
 
-def test_permissions_hash_by_identity_by_default() -> None:
+def test_permissions_hash() -> None:
     assert HasRole("admin") == HasRole("admin")
-    assert hash(HasRole("admin")) != hash(HasRole("admin"))
+    assert hash(HasRole("admin")) == hash(HasRole("admin"))
 
 
 def test_no_hash_override_opts_out_of_identity_hash() -> None:

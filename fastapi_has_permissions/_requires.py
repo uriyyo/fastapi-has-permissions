@@ -5,13 +5,13 @@ from typing import cast, overload
 from fastapi.params import Depends
 from fastapi_injected import resolve
 
-from ._bases import ForceDataclass, IdentityHashMixin
+from ._bases import ForceDataclass
 from ._permissions import Permission
 from ._policy import Policy
 from .types import Dep
 
 
-class RequiresResolver[R](ForceDataclass, IdentityHashMixin):
+class RequiresResolver[R](ForceDataclass):
     resource_dep: Dep[R]
     requirement: Permission | Policy[R]
 

@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi_injected import resolve
 from fastapi_injected.deps import HasDependsHook
 
-from ._bases import ForceDataclass, IdentityHashMixin, SignatureOverride
+from ._bases import ForceDataclass, SignatureOverride
 from ._deps_args import remap_deps_args
 from ._results import CheckResult, Skipped, SkipPermissionCheck, call_permissions_check
 from .types import Args, Kwargs
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from ._permissions import Permission
 
 
-class BaseResolvedPermission(ABC, IdentityHashMixin):
+class BaseResolvedPermission(ABC):
     @abstractmethod
     async def check_permissions(self) -> CheckResult:
         pass
@@ -33,7 +33,7 @@ class ResolvedPermission(ForceDataclass, BaseResolvedPermission):
         return await call_permissions_check(self.permission, *self.args, **self.kwargs)
 
 
-class PermissionResolver(ForceDataclass, IdentityHashMixin, SignatureOverride):
+class PermissionResolver(ForceDataclass, SignatureOverride):
     permission: Permission
 
     def __get_signature__(self) -> inspect.Signature:
