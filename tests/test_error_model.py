@@ -5,7 +5,7 @@ import pytest
 from fastapi import Depends, FastAPI, Header, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Permission, add_permissions, permission
+from fastapi_has_permissions import Permission, WithError, add_permissions, evaluate, permission
 from fastapi_has_permissions.common import IsAuthenticated
 
 
@@ -112,3 +112,20 @@ def test_code_survives_multi_branch_aggregation(app_client) -> None:
         "code": "missing_authorization",
         "message": "Permission denied; Admin role required",
     }
+
+
+class DynamicMessage(Permission):
+    role: str
+
+    def get_exc_message(self) -> str:
+        return f"You need the {self.role!r} role"
+
+    async def check_permissions(self) -> bool:
+        return False
+
+
+@pytest.mark.asyncio
+async def test_overridden_get_exc_message_is_used() -> None:
+    assert (await evaluate(DynamicMessage("admin"))).reason == "You need the 'admin' role"
+    assert (await evaluate(WithError(DynamicMessage("admin")))).reason == "You need the 'admin' role"
+    assert (await evaluate(WithError(DynamicMessage("admin"), message="Not found"))).reason == "Not found"

@@ -144,6 +144,26 @@ async def dashboard():
     `PermissionWrapper` is useful for defining organizational permission policies as named classes.
     This improves readability and keeps your route definitions clean.
 
+## Adjusting a Single Branch
+
+Operators combine permissions, [wrappers](wrappers.md) adjust what a single branch of the
+composition reports. They are permissions themselves, so they can be dropped anywhere in a tree:
+
+```python
+from fastapi import status
+
+from fastapi_has_permissions import Advisory, DenySkipped, WithError
+
+Depends(
+    # `IsInBetaCohort` can help, but can never deny on its own
+    Advisory(IsInBetaCohort())
+    # the license check must reach a decision, an abstention is a denial
+    & DenySkipped(HasValidLicense())
+    # this branch answers with a single error, whichever child denied
+    & WithError(IsArticleAuthor() | IsEditor(), status_code=status.HTTP_404_NOT_FOUND),
+)
+```
+
 ## Chaining
 
 When you chain multiple `&` or `|` operators, they are merged into a single `AllPermissions` or

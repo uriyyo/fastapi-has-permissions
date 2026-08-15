@@ -65,8 +65,7 @@ a `Skipped` result.
 You can also return `Failed` and `Skipped` instances directly instead of using the helper functions:
 
 ```python
-from fastapi_has_permissions import Permission
-from fastapi_has_permissions._results import CheckResult, Failed, Skipped
+from fastapi_has_permissions import CheckResult, Failed, Permission, Skipped
 
 
 class MyPermission(Permission):
@@ -194,6 +193,9 @@ a single branch instead of the whole tree:
 ```python
 Depends(AllowSkipped(RequiresTokenIfPresent()) & IsAuthenticated())
 ```
+
+Its counterparts `DenySkipped` and `Advisory` cover the other directions -- see
+[Permission Wrappers](wrappers.md).
 
 It also works with imperative evaluation:
 

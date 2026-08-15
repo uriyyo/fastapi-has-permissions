@@ -16,6 +16,7 @@ class HTTPExcRaiser:
     default_exc_code: ClassVar[str | None] = None
     default_exc_headers: ClassVar[dict[str, str] | None] = None
 
+    # the `get_exc_*` methods are the extension point - override them for a dynamic error config
     def get_exc_message(self) -> str:
         return self.message or self.default_exc_message
 
@@ -28,6 +29,20 @@ class HTTPExcRaiser:
     def get_exc_headers(self) -> dict[str, str] | None:
         return self.headers or self.default_exc_headers
 
+    # all four resolve the same way: an explicit value on this instance wins,
+    # then the value propagated from the failing child, then this instance's own error config
+    def resolve_exc_message(self, message: str | None = None) -> str:
+        return self.message or message or self.get_exc_message()
+
+    def resolve_exc_status_code(self, status_code: int | None = None) -> int:
+        return self.status_code or status_code or self.get_exc_status_code()
+
+    def resolve_exc_code(self, code: str | None = None) -> str | None:
+        return self.code or code or self.get_exc_code()
+
+    def resolve_exc_headers(self, headers: dict[str, str] | None = None) -> dict[str, str] | None:
+        return self.headers or headers or self.get_exc_headers()
+
     def has_default_error_config(self) -> bool:
         return self.message is None and self.status_code is None and self.code is None and self.headers is None
 
@@ -38,17 +53,15 @@ class HTTPExcRaiser:
         code: str | None = None,
         headers: dict[str, str] | None = None,
     ) -> NoReturn:
-        # all four fields resolve the same way: an explicit value on this instance wins,
-        # then the value propagated from the failing child, then this class default
-        detail: Any = self.message or message or self.default_exc_message
+        detail: Any = self.resolve_exc_message(message)
 
-        if final_code := self.code or code or self.default_exc_code:
+        if final_code := self.resolve_exc_code(code):
             detail = {"code": final_code, "message": detail}
 
         raise HTTPException(
-            status_code=self.status_code or status_code or self.default_exc_status_code,
+            status_code=self.resolve_exc_status_code(status_code),
             detail=detail,
-            headers=self.headers or headers or self.default_exc_headers,
+            headers=self.resolve_exc_headers(headers),
         )
 
 

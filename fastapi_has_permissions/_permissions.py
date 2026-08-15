@@ -161,17 +161,6 @@ class PermissionWrapper(_SinglePermission):
 
 
 @final
-class AllowSkipped(PermissionWrapper):
-    async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
-        result = await permission.check_permissions()
-
-        if is_skipped(result):
-            return True
-
-        return result
-
-
-@final
 class AnyPermissions(_AllAnyPermissions):
     default_exc_message: ClassVar[str] = "None of the permissions were satisfied"
 
@@ -256,7 +245,6 @@ class NotPermission(_SinglePermission):
 
 __all__ = [
     "AllPermissions",
-    "AllowSkipped",
     "AnyPermissions",
     "NotPermission",
     "Permission",

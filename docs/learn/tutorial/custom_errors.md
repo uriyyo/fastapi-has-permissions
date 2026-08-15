@@ -69,6 +69,48 @@ async def custom_message():
 
     Instance-level `message` and `status_code` take precedence over class-level defaults.
 
+!!! warning
+
+    A permission's own error config is applied when that permission is the **root** of the tree --
+    the one passed to `Depends()`. A permission nested inside a composition reports the error of
+    whichever child denied, so `(RequiresAuthentication(status_code=404) | IsAdmin())` still answers
+    with the child's `401`. Use [`WithError`](#witherror----one-error-for-a-whole-subtree) to change
+    the error of a nested subtree.
+
+## `WithError` -- One Error for a Whole Subtree
+
+`WithError` rewrites the error of whatever it wraps, so an entire subtree answers with a single
+error config no matter which permission inside of it denied:
+
+```python
+from fastapi import status
+
+from fastapi_has_permissions import WithError
+
+
+@app.get(
+    "/articles/{article_id}",
+    dependencies=[
+        Depends(
+            WithError(
+                IsArticleAuthor() | IsEditor(),
+                message="Not found",
+                status_code=status.HTTP_404_NOT_FOUND,
+            ),
+        ),
+    ],
+)
+async def get_article(article_id: int): ...
+```
+
+Without it the response leaks information: a `403` tells the caller the article exists and they
+are not allowed to see it, while a `404` does not.
+
+Fields you leave unset fall back to the failing permission's own values, so
+`WithError(perm, status_code=404)` changes only the status code and keeps the original message.
+Unlike the `message` / `status_code` arguments of a plain permission, `WithError` works at any
+depth of the tree. See [Permission Wrappers](wrappers.md) for the rest of the wrappers.
+
 ## Override Methods
 
 For dynamic error messages, you can override `get_exc_message()` and `get_exc_status_code()`:
@@ -90,6 +132,10 @@ class HasRole(Permission):
         return request.headers.get("role") == self.role
 ```
 
+These methods take no arguments and are consulted whenever this permission's own error config is
+needed -- when it denies as the root of the tree, and when a wrapper such as `WithError`,
+`FailOnExc` or `DenySkipped` builds a failure from it.
+
 ## Composed Permission Defaults
 
 The built-in composition classes have their own default messages:
@@ -100,11 +146,14 @@ The built-in composition classes have their own default messages:
 | `AnyPermissions` (`\|`) | `"None of the permissions were satisfied"` |
 | `NotPermission` (`~`) | `"The permission was satisfied, but it should not have been"` |
 
-You can override these by passing `message` to the composition result:
+A composed permission only falls back to these defaults when none of its children reported an
+error of their own. To give the whole composition one error, wrap it:
 
 ```python
-perm = HasAuthorizationHeader() & HasAdminRole()
-perm.message = "You must be an authenticated admin"
+perm = WithError(
+    HasAuthorizationHeader() & HasAdminRole(),
+    message="You must be an authenticated admin",
+)
 ```
 
 ## Using `Failed` for Per-Check Messages
@@ -113,8 +162,7 @@ You can also return `Failed(reason="...")` from `check_permissions` to provide a
 message for that particular failure:
 
 ```python
-from fastapi_has_permissions import Permission
-from fastapi_has_permissions._results import Failed
+from fastapi_has_permissions import Failed, Permission
 
 
 class HasValidToken(Permission):

@@ -108,8 +108,6 @@ def test_evaluator_require_allows_explicitly_allowed_skip(app_client) -> None:
 
 @pytest.mark.asyncio
 async def test_evaluate_returns_skipped_without_raising() -> None:
-    # `evaluate`/`check` stay observational - only `require` and the root of a
-    # dependency tree turn an abstention into a denial
     assert is_skipped(await evaluate(AlwaysSkip()))
 
 

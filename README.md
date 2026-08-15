@@ -238,6 +238,8 @@ with push_overrides({get_role: "admin"}):
   structured body: `{"detail": {"code": "not_admin", "message": "Admin role required"}}`;
   without a code the body stays a plain string
 - All of message, status code, code, and headers propagate through `&`, `|`, `~`
+- A permission's own error config applies when it is the root of the tree; use `WithError(...)`
+  to give a nested subtree one error (e.g. a `404` that does not admit the resource exists)
 
 ### Other Features
 
@@ -245,6 +247,9 @@ with push_overrides({get_role: "admin"}):
   `default_exc_code` / `default_exc_headers` class variables or the corresponding
   `message` / `status_code` / `code` / `headers` init parameters
 - **Skip / Fail helpers** -- call `skip()` or `fail()` inside `check_permissions()` for explicit control flow
+- **Wrappers** -- `AllowSkipped` / `DenySkipped` / `Advisory` rewrite a check's result, `WithError`
+  gives a whole subtree one error config, `FailOnExc` / `SkipOnExc` keep a broken check from
+  turning into a 500
 - **Built-in common permissions** -- `IsAuthenticated`, `HasScope`, `HasRole` ready to use with your auth dependencies
 - **Full FastAPI DI support** -- `check_permissions()` accepts any FastAPI-injectable parameters
 - **Built on [fastapi-injected](https://github.com/uriyyo/fastapi-injected)** -- `Dep` / `DepFactory` are

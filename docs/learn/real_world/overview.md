@@ -28,14 +28,14 @@ from dataclasses import field
 
 from fastapi.exceptions import RequestValidationError
 
-from fastapi_has_permissions import LazyPermission, Permission, PermissionWrapper
+from fastapi_has_permissions import LazyPermission, Permission, PermissionWrapper, WithError
 from fastapi_has_permissions.types import Exceptions
 
 from app.auth.dependencies import get_current_user, User
 
 # Type alias for your auth dependency
 from typing import Annotated
-from fastapi import Depends
+from fastapi import Depends, status
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
 
@@ -69,6 +69,16 @@ class IsPrivilegedUser(PermissionWrapper):
 # Base class for lazy permissions that skip on validation errors
 class GracefulLazyPermission(LazyPermission):
     skip_on_exc: Exceptions = field(default=(RequestValidationError,), kw_only=True)
+
+
+# Reusable policy: this subtree answers 404 instead of admitting the resource exists
+def hidden(permission: Permission) -> Permission:
+    return WithError(
+        permission,
+        message="Not found",
+        status_code=status.HTTP_404_NOT_FOUND,
+        code="not_found",
+    )
 ```
 
 ### `permissions/articles.py`
@@ -205,7 +215,92 @@ On list endpoints (`GET /articles`), the lazy permissions (`IsArticleAuthor`, `B
 skipped because the `article_id` path parameter doesn't exist. Only `IsPrivilegedUser()` and `IsEditor()`
 are evaluated.
 
-## Pattern 5: Endpoint-Level Overrides
+!!! warning
+
+    If *every* branch could skip on a given endpoint, the request is denied -- a check that never
+    ran cannot grant access. Either keep one non-skippable branch in the composition (as
+    `IsPrivilegedUser()` is above), or wrap the whole thing into `AllowSkipped` to state that an
+    abstention is fine there.
+
+## Pattern 5: Hiding Resources Instead of Denying Them
+
+Answering `403` on a resource endpoint tells the caller the resource exists. `WithError` gives the
+whole ownership check a single `404`, no matter which permission inside of it denied:
+
+```python
+from fastapi import APIRouter, Depends, status
+
+from fastapi_has_permissions import WithError
+
+from app.permissions.articles import IsArticleAuthor, BelongsToSameWorkspace, ArticleDep
+from app.permissions.common import IsEditor, IsPrivilegedUser
+
+router = APIRouter(
+    prefix="/articles",
+    dependencies=[
+        Depends(
+            WithError(
+                IsPrivilegedUser() | IsArticleAuthor() | (IsEditor() & BelongsToSameWorkspace(ArticleDep)),
+                message="Not found",
+                status_code=status.HTTP_404_NOT_FOUND,
+                code="article_not_found",
+            ),
+        ),
+    ],
+)
+```
+
+An operator-built composition has nowhere to put an error config of its own -- `a | b` produces a
+plain `AnyPermissions`. `WithError` supplies one from the outside, and since it rewrites the result
+instead of the raised exception, it keeps working when the subtree is nested deeper in a larger
+composition or evaluated imperatively with `evaluate()`.
+
+## Pattern 6: Surviving a Broken Backend
+
+A permission that reads from a cache, a database or an authorization service can raise. Left
+unhandled, that exception turns every request into a `500`. Decide per permission whether it should
+deny or abstain:
+
+```python
+from redis.exceptions import RedisError
+
+from fastapi_has_permissions import Advisory, FailOnExc, SkipOnExc
+
+
+# entitlements are load-bearing -> deny, and say why
+class HasEntitlement(Permission):
+    async def check_permissions(self, user: CurrentUserDep, cache: CacheDep) -> bool:
+        return await cache.sismember(f"entitlements:{user.id}", "articles.write")
+
+
+entitlement_check = FailOnExc(
+    HasEntitlement(),
+    (RedisError,),
+    message="Authorization backend unavailable",
+    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+)
+
+# the beta cohort is a bonus signal -> abstain and let the other permissions decide
+beta_check = SkipOnExc(IsInBetaCohort(), (RedisError,))
+
+router = APIRouter(
+    prefix="/articles",
+    dependencies=[Depends(entitlement_check & (IsEditor() | beta_check))],
+)
+```
+
+`FailOnExc` reports its own error config, so the exception itself never reaches the client. Anything
+not listed in the wrapper is re-raised unchanged, so real bugs still surface.
+
+For a permission whose failure should never block a request on its own, `Advisory` turns the denial
+into an abstention:
+
+```python
+# `IsInBetaCohort` can only grant access, never take it away
+Depends(Advisory(IsInBetaCohort()) & IsAuthenticated())
+```
+
+## Pattern 7: Endpoint-Level Overrides
 
 Add extra permissions to specific endpoints beyond what the router requires:
 
@@ -240,4 +335,6 @@ async def report_usage(): ...
 | Router-level | Most endpoints share the same access rule |
 | Two-tier router | Mix of public and admin endpoints on the same prefix |
 | Complex composition | Resource ownership + workspace membership checks |
+| `WithError` | The caller should not learn that a resource exists |
+| `FailOnExc` / `SkipOnExc` | A check talks to a backend that can be down |
 | Endpoint-level | Specific endpoint needs extra restrictions |

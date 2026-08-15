@@ -69,22 +69,22 @@ async def call_permissions_check(
     try:
         result = await permission.check_permissions(*args, **kwargs)
     except PermissionCheckFailed as exc:
-        return _to_failed(permission, reason=exc.reason)
+        return to_failed(permission, reason=exc.reason)
     except SkipPermissionCheck as exc:
-        return _to_skipped(reason=exc.reason)
+        return to_skipped(reason=exc.reason)
 
     match result:
         case False:
-            return _to_failed(permission)
+            return to_failed(permission)
         case _:
             return result
 
 
-def _to_skipped(reason: str | None = None) -> Skipped:
+def to_skipped(reason: str | None = None) -> Skipped:
     return Skipped(reason=reason)
 
 
-def _to_failed(permission: Permission, /, reason: str | None = None) -> Failed:
+def to_failed(permission: Permission, /, reason: str | None = None) -> Failed:
     return Failed(
         reason=reason or permission.get_exc_message(),
         status_code=permission.get_exc_status_code(),
@@ -105,4 +105,6 @@ __all__ = [
     "is_skipped",
     "is_successful",
     "skip",
+    "to_failed",
+    "to_skipped",
 ]

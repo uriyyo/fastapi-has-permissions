@@ -76,6 +76,35 @@ async def get_article(article_id: UUID):
     return await db.get(Article, article_id)
 ```
 
+## `skip_on_exc` vs. the Exception Wrappers
+
+`skip_on_exc` covers the whole lazy check -- both resolving the dependencies and running
+`check_permissions`. The [`FailOnExc` / `SkipOnExc`](wrappers.md) wrappers cover only the check
+itself, because dependencies of a non-lazy permission are resolved by FastAPI before the wrapper
+runs.
+
+| Failure | Handled by |
+|---------|------------|
+| A dependency cannot be resolved | `lazy(perm, skip_on_exc=...)` |
+| `check_permissions` raises | `FailOnExc` / `SkipOnExc`, or `lazy(..., skip_on_exc=...)` |
+
+They compose, which is the usual choice when a permission both takes a path parameter and talks to
+an external service -- a missing parameter abstains, a broken backend denies:
+
+```python
+from redis.exceptions import RedisError
+
+from fastapi_has_permissions import FailOnExc
+
+Depends(
+    FailOnExc(
+        lazy(IsArticleAuthor(), skip_on_exc=(RequestValidationError,)),
+        (RedisError,),
+        message="Authorization backend unavailable",
+    ),
+)
+```
+
 ## `LazyPermission` Base Class
 
 Instead of wrapping with `lazy()`, you can subclass `LazyPermission` directly:
