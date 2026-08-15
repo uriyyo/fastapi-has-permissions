@@ -37,7 +37,9 @@ it into a `Failed` result with the provided reason. The reason is used as the HT
 ## `skip()` -- Skip the Check
 
 Call `skip()` inside `check_permissions` to skip the permission check entirely. A skipped permission
-is treated as if it was never checked:
+is treated as if it was never checked, so the other permissions of a composition decide the outcome.
+It is an abstention, not an approval -- a skip that reaches the root of a permission tree denies the
+request unless you wrap it into [`AllowSkipped`](#allowskipped----opt-into-skip-means-allow):
 
 ```python
 from fastapi import Request
@@ -152,11 +154,55 @@ Depends(AlwaysSkip() | HasAdminRole())
 ```python
 # Negating a skipped permission still skips
 Depends(~AlwaysSkip())
-# Always: 200 OK (skip passes through)
+# Always: 403 Forbidden (skip passes through and is denied at the root)
 ```
 
-!!! warning
+## Skip at the Root Is a Denial
 
-    When all permissions in a composition are skipped, the final result is `Skipped`, which means
-    the request is allowed through. Design your permissions carefully to ensure at least one
-    non-skippable check exists when needed.
+A skip means "this check has no opinion". Inside a composition another permission can still
+decide the outcome, but if the skip reaches the **root** of the tree -- the permission passed to
+`Depends()` or to `evaluator.require()` -- there is nothing left to decide, so the request is
+denied with the permission's regular error configuration:
+
+```python
+# skips when no Authorization header is present -> 403 Forbidden
+Depends(RequiresTokenIfPresent())
+
+# every branch skipped -> nothing decided -> 403 Forbidden
+Depends(RequiresTokenIfPresent() & AlsoSkips())
+```
+
+This is the safe default: a check that never ran cannot grant access.
+
+## `AllowSkipped` -- Opt Into Skip-Means-Allow
+
+Wrap a permission into `AllowSkipped` to declare explicitly that an abstention grants access.
+It turns a `Skipped` result into a successful one and leaves every other result untouched:
+
+```python
+from fastapi import Depends
+
+from fastapi_has_permissions import AllowSkipped
+
+# skipped -> 200 OK, failed -> 403 Forbidden
+Depends(AllowSkipped(RequiresTokenIfPresent()))
+```
+
+`AllowSkipped` is a regular permission, so it composes like any other one and can be applied to
+a single branch instead of the whole tree:
+
+```python
+Depends(AllowSkipped(RequiresTokenIfPresent()) & IsAuthenticated())
+```
+
+It also works with imperative evaluation:
+
+```python
+await evaluator.require(AllowSkipped(RequiresTokenIfPresent()))
+```
+
+!!! note
+
+    `evaluate()` and `evaluator.check()` are observational and never raise -- `evaluate()` returns
+    the `Skipped` result as is, and `check()` reports `False` for it. Only `require()` and the root
+    of a dependency tree turn an abstention into a denial.

@@ -49,14 +49,18 @@ lazy_author_check = lazy(
 )
 ```
 
-Now you can safely use this permission on a router that includes both list and detail endpoints:
+Now you can safely use this permission on a router that includes both list and detail endpoints.
+A skip that reaches the root of a permission tree is denied, so wrap the check into
+`AllowSkipped` to let the list endpoint through:
 
 ```python
 from fastapi import APIRouter, Depends
 
+from fastapi_has_permissions import AllowSkipped
+
 router = APIRouter(
     prefix="/articles",
-    dependencies=[Depends(lazy_author_check)],
+    dependencies=[Depends(AllowSkipped(lazy_author_check))],
 )
 
 

@@ -116,7 +116,20 @@ itself skipped, and `~` passes a skip through unchanged:
 | `Skip \| Skip` | skip                                |
 | `~Skip`        | skip                                |
 
-A permission that resolves to skipped never blocks the request.
+A skip is an abstention, not an approval: if it reaches the root of the tree — the
+permission you passed to `Depends()` or to `evaluator.require()` — the request is
+denied. Wrap the permission into `AllowSkipped` to state explicitly that an
+abstention should grant access:
+
+```python
+from fastapi_has_permissions import AllowSkipped
+
+# skipped -> 403 Forbidden
+Depends(IsArticleAuthor())
+
+# skipped -> allowed
+Depends(AllowSkipped(IsArticleAuthor()))
+```
 
 > **Note:** every permission instance is a distinct FastAPI dependency (identity-based
 > hashing), so two equal instances are resolved and checked independently within one

@@ -6,7 +6,17 @@ from fastapi import Depends, FastAPI, Header, status
 from fastapi.testclient import TestClient
 from fastapi_injected import push_overrides
 
-from fastapi_has_permissions import Evaluate, Permission, add_permissions, evaluate, is_failed, is_successful
+from fastapi_has_permissions import (
+    AllowSkipped,
+    Evaluate,
+    Permission,
+    add_permissions,
+    evaluate,
+    is_failed,
+    is_skipped,
+    is_successful,
+    skip,
+)
 
 
 async def get_role(x_role: Annotated[str | None, Header()] = None) -> str:
@@ -16,6 +26,11 @@ async def get_role(x_role: Annotated[str | None, Header()] = None) -> str:
 class HasAdminRole(Permission):
     async def check_permissions(self, role: Annotated[str, Depends(get_role)]) -> bool:
         return role == "admin"
+
+
+class AlwaysSkip(Permission):
+    async def check_permissions(self) -> bool:
+        skip("always skip")
 
 
 app = FastAPI()
@@ -30,6 +45,18 @@ async def imperative_check(evaluator: Evaluate) -> dict[str, bool]:
 @app.get("/imperative-require")
 async def imperative_require(evaluator: Evaluate) -> str:
     await evaluator.require(HasAdminRole())
+    return "You have access to this endpoint!"
+
+
+@app.get("/imperative-require-skipping")
+async def imperative_require_skipping(evaluator: Evaluate) -> str:
+    await evaluator.require(AlwaysSkip())
+    return "You have access to this endpoint!"
+
+
+@app.get("/imperative-require-allow-skipped")
+async def imperative_require_allow_skipped(evaluator: Evaluate) -> str:
+    await evaluator.require(AllowSkipped(AlwaysSkip()))
     return "You have access to this endpoint!"
 
 
@@ -64,6 +91,26 @@ def test_evaluator_require_raises(app_client) -> None:
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
     assert response.json()["detail"] == "Permission denied"
+
+
+def test_evaluator_require_raises_on_skip(app_client) -> None:
+    response = app_client.get("/imperative-require-skipping")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json()["detail"] == "Permission denied"
+
+
+def test_evaluator_require_allows_explicitly_allowed_skip(app_client) -> None:
+    response = app_client.get("/imperative-require-allow-skipped")
+
+    assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.asyncio
+async def test_evaluate_returns_skipped_without_raising() -> None:
+    # `evaluate`/`check` stay observational - only `require` and the root of a
+    # dependency tree turn an abstention into a denial
+    assert is_skipped(await evaluate(AlwaysSkip()))
 
 
 @pytest.mark.asyncio

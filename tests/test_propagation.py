@@ -207,8 +207,8 @@ def test_propagation(endpoint, headers, expected_status, expected_detail, app_cl
         pytest.param(
             "/not-and-all-skip",
             {},
-            status.HTTP_200_OK,
-            id="not-of-fully-skipped-and-skips",
+            status.HTTP_403_FORBIDDEN,
+            id="not-of-fully-skipped-and-skips-and-is-denied-at-root",
         ),
         pytest.param(
             "/not-and-skip-and-fail",

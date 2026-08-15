@@ -33,7 +33,7 @@ class HTTPExcRaiser:
 
     def raise_http_exception(
         self,
-        message: str | None,
+        message: str | None = None,
         status_code: int | None = None,
         code: str | None = None,
         headers: dict[str, str] | None = None,

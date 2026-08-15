@@ -4,11 +4,19 @@ from ._app import add_permissions
 from ._evaluate import Evaluate, PermissionEvaluator, evaluate
 from ._func import permission
 from ._lazy import LazyPermission, lazy
-from ._permissions import AllPermissions, AnyPermissions, NotPermission, Permission, PermissionWrapper
+from ._permissions import (
+    AllowSkipped,
+    AllPermissions,
+    AnyPermissions,
+    NotPermission,
+    Permission,
+    PermissionWrapper,
+)
 from ._results import CheckResult, Failed, Skipped, fail, is_failed, is_skipped, is_successful, skip
 
 __all__ = [
     "AllPermissions",
+    "AllowSkipped",
     "AnyPermissions",
     "CheckResult",
     "Dep",

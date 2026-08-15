@@ -4,7 +4,7 @@ import pytest
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Dep, Permission, add_permissions
+from fastapi_has_permissions import AllowSkipped, Dep, Permission, add_permissions
 from fastapi_has_permissions._results import SkipPermissionCheck
 
 app = FastAPI()
@@ -127,6 +127,30 @@ class HasRole(Permission):
         Depends((SkipIfNoToken() & HasRole()) | HasAuthorizationHeader()),
     ],
 )
+@app.get(
+    "/allow-skipped-simple",
+    dependencies=[
+        Depends(AllowSkipped(AlwaysSkip())),
+    ],
+)
+@app.get(
+    "/allow-skipped-and-all-skip",
+    dependencies=[
+        Depends(AllowSkipped(AlwaysSkip() & AlwaysSkip())),
+    ],
+)
+@app.get(
+    "/allow-skipped-dep-skips-all",
+    dependencies=[
+        Depends(AllowSkipped(SkipsInDependency(Depends(skipping_dep)) & AlwaysSkip())),
+    ],
+)
+@app.get(
+    "/allow-skipped-not-skip",
+    dependencies=[
+        Depends(AllowSkipped(HasRole())),
+    ],
+)
 async def route() -> str:
     return "You have access to this endpoint!"
 
@@ -143,14 +167,14 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/simple-skip",
             {},
-            status.HTTP_200_OK,
-            id="simple-skip-always-skipped",
+            status.HTTP_403_FORBIDDEN,
+            id="simple-skip-at-root-is-denied",
         ),
         pytest.param(
             "/skip-if-no-token",
             {},
-            status.HTTP_200_OK,
-            id="skip-if-no-token-missing-header-skips",
+            status.HTTP_403_FORBIDDEN,
+            id="skip-if-no-token-missing-header-skips-and-is-denied",
         ),
         pytest.param(
             "/skip-if-no-token",
@@ -191,8 +215,8 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/and-all-skip",
             {},
-            status.HTTP_200_OK,
-            id="and-all-skip-both-skipped",
+            status.HTTP_403_FORBIDDEN,
+            id="and-all-skip-both-skipped-is-denied",
         ),
         pytest.param(
             "/or-skip-and-pass",
@@ -215,14 +239,14 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/or-all-skip",
             {},
-            status.HTTP_200_OK,
-            id="or-all-skip-both-skipped",
+            status.HTTP_403_FORBIDDEN,
+            id="or-all-skip-both-skipped-is-denied",
         ),
         pytest.param(
             "/not-skip",
             {},
-            status.HTTP_200_OK,
-            id="not-skip-passthrough",
+            status.HTTP_403_FORBIDDEN,
+            id="not-skip-passthrough-is-denied-at-root",
         ),
         pytest.param(
             "/complex-skip",
@@ -256,6 +280,36 @@ def app_client() -> Iterator[TestClient]:
             id="complex-skip-admin-role-no-auth-token-check-abstains",
         ),
         pytest.param(
+            "/allow-skipped-simple",
+            {},
+            status.HTTP_200_OK,
+            id="allow-skipped-turns-skip-into-success",
+        ),
+        pytest.param(
+            "/allow-skipped-and-all-skip",
+            {},
+            status.HTTP_200_OK,
+            id="allow-skipped-turns-fully-skipped-composite-into-success",
+        ),
+        pytest.param(
+            "/allow-skipped-dep-skips-all",
+            {},
+            status.HTTP_200_OK,
+            id="allow-skipped-turns-dependency-skip-into-success",
+        ),
+        pytest.param(
+            "/allow-skipped-not-skip",
+            {"role": "admin"},
+            status.HTTP_200_OK,
+            id="allow-skipped-passes-through-success",
+        ),
+        pytest.param(
+            "/allow-skipped-not-skip",
+            {},
+            status.HTTP_403_FORBIDDEN,
+            id="allow-skipped-passes-through-failure",
+        ),
+        pytest.param(
             "/and-dep-skips-first",
             {},
             status.HTTP_403_FORBIDDEN,
@@ -276,8 +330,8 @@ def app_client() -> Iterator[TestClient]:
         pytest.param(
             "/and-dep-skips-all",
             {},
-            status.HTTP_200_OK,
-            id="and-dep-skips-all-branches-skipped",
+            status.HTTP_403_FORBIDDEN,
+            id="and-dep-skips-all-branches-skipped-is-denied",
         ),
     ],
 )

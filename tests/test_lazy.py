@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Header, Path
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Permission, add_permissions, lazy
+from fastapi_has_permissions import AllowSkipped, Permission, add_permissions, lazy
 
 app = FastAPI()
 add_permissions(app)
@@ -23,6 +23,12 @@ class AgeIsMoreThan(Permission):
 
 @app.get(
     "/age-restricted-endpoint",
+    dependencies=[
+        Depends(AllowSkipped(lazy(AgeIsMoreThan(age=18), skip_on_exc=(RequestValidationError,)))),
+    ],
+)
+@app.get(
+    "/strict-age-restricted-endpoint",
     dependencies=[
         Depends(lazy(AgeIsMoreThan(age=18), skip_on_exc=(RequestValidationError,))),
     ],
@@ -44,6 +50,10 @@ def app_client() -> Iterator[TestClient]:
         pytest.param("/age-restricted-endpoint", {"age": "17"}, 403, id="age-under-18"),
         pytest.param("/age-restricted-endpoint", {"age": "invalid"}, 200, id="invalid-age"),
         pytest.param("/age-restricted-endpoint", {}, 200, id="missing-age"),
+        # without `AllowSkipped` a skip that reaches the root is denied
+        pytest.param("/strict-age-restricted-endpoint", {"age": "20"}, 200, id="strict-age-over-18"),
+        pytest.param("/strict-age-restricted-endpoint", {"age": "invalid"}, 403, id="strict-invalid-age"),
+        pytest.param("/strict-age-restricted-endpoint", {}, 403, id="strict-missing-age"),
     ],
 )
 def test_permissions(endpoint, headers, expected_status, app_client) -> None:

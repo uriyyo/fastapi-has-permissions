@@ -92,6 +92,11 @@ class Permission(
             case Failed(reason=reason, status_code=status_code, code=code, headers=headers):
                 message = reason
                 result = False
+            case Skipped():
+                # a skip reaching the top level is an abstention, not an approval - deny it,
+                # wrap the permission into `AllowSkipped` to opt into skip-means-allow
+                message = self.get_exc_message()
+                result = False
             case False:
                 message = self.get_exc_message()
                 result = False
@@ -153,6 +158,17 @@ class PermissionWrapper(_SinglePermission):
 
     async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
         return await permission.check_permissions()
+
+
+@final
+class AllowSkipped(PermissionWrapper):
+    async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
+        result = await permission.check_permissions()
+
+        if is_skipped(result):
+            return True
+
+        return result
 
 
 @final
@@ -240,6 +256,7 @@ class NotPermission(_SinglePermission):
 
 __all__ = [
     "AllPermissions",
+    "AllowSkipped",
     "AnyPermissions",
     "NotPermission",
     "Permission",
