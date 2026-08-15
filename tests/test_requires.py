@@ -3,7 +3,7 @@ from dataclasses import dataclass, is_dataclass
 from typing import Annotated, Any, ClassVar
 
 import pytest
-from fastapi import Depends, FastAPI, Header, status
+from fastapi import FastAPI, Header, params, status
 from fastapi.testclient import TestClient
 
 from fastapi_has_permissions import Dep, DepFactory, Permission, Policy, Requires, add_permissions, skip
@@ -63,80 +63,80 @@ add_permissions(app)
 
 
 @app.get("/allow")
-async def allow(doc: Annotated[Doc, Depends(Requires(DocDep, Allow()))]) -> Any:
+async def allow(doc: Annotated[Doc, Requires(DocDep, Allow())]) -> Any:
     HANDLER_CALLS.append(doc.name)
     return {"name": doc.name}
 
 
 @app.get("/deny")
-async def deny(doc: Annotated[Doc, Depends(Requires(DocDep, Deny()))]) -> Any:
+async def deny(doc: Annotated[Doc, Requires(DocDep, Deny())]) -> Any:
     HANDLER_CALLS.append(doc.name)
     return {"name": doc.name}
 
 
 @app.get("/masked")
-async def masked(doc: Annotated[Doc, Depends(Requires(DocDep, Masked()))]) -> Any:
+async def masked(doc: Annotated[Doc, Requires(DocDep, Masked())]) -> Any:
     return {"name": doc.name}
 
 
 @app.get("/skip")
-async def skipped(doc: Annotated[Doc, Depends(Requires(DocDep, Skipper()))]) -> Any:
+async def skipped(doc: Annotated[Doc, Requires(DocDep, Skipper())]) -> Any:
     return {"name": doc.name}
 
 
 @app.get("/quiet")
-async def quiet(doc: Annotated[Doc, Depends(Requires(DocDep, Deny(auto_error=False)))]) -> Any:
+async def quiet(doc: Annotated[Doc, Requires(DocDep, Deny(auto_error=False))]) -> Any:
     return {"name": doc.name}
 
 
 @app.get("/with-deps")
-async def with_deps(doc: Annotated[Doc, Depends(Requires(DocDep, IsAdmin(RoleDep)))]) -> Any:
+async def with_deps(doc: Annotated[Doc, Requires(DocDep, IsAdmin(RoleDep))]) -> Any:
     return {"name": doc.name}
 
 
 @app.get("/composed")
-async def composed(doc: Annotated[Doc, Depends(Requires(DocDep, IsAdmin(RoleDep) | Allow()))]) -> Any:
+async def composed(doc: Annotated[Doc, Requires(DocDep, IsAdmin(RoleDep) | Allow())]) -> Any:
     return {"name": doc.name}
 
 
 @app.get("/twice")
 async def twice(
-    first: Annotated[Doc, Depends(Requires(DocDep, Allow()))],
-    second: Annotated[Doc, Depends(Requires(DocDep, Allow()))],
+    first: Annotated[Doc, Requires(DocDep, Allow())],
+    second: Annotated[Doc, Requires(DocDep, Allow())],
 ) -> Any:
     return {"same": first == second}
 
 
 # a policy in the permission slot dispatches on the request method and injects the resource
 @app.get("/policy")
-async def via_policy_get(doc: Annotated[Doc, Depends(Requires(DocDep, ReadOnly()))]) -> Any:
+async def via_policy_get(doc: Annotated[Doc, Requires(DocDep, ReadOnly())]) -> Any:
     return {"name": doc.name}
 
 
 @app.post("/policy")
-async def via_policy_post(doc: Annotated[Doc, Depends(Requires(DocDep, ReadOnly()))]) -> Any:
+async def via_policy_post(doc: Annotated[Doc, Requires(DocDep, ReadOnly())]) -> Any:
     return {"name": doc.name}
 
 
 # single-argument form: the policy supplies both the check and the resource
 @app.get("/policy-only")
-async def via_policy_only_get(doc: Annotated[Doc, Depends(Requires(ReadOnly()))]) -> Any:
+async def via_policy_only_get(doc: Annotated[Doc, Requires(ReadOnly())]) -> Any:
     return {"name": doc.name}
 
 
 @app.post("/policy-only")
-async def via_policy_only_post(doc: Annotated[Doc, Depends(Requires(ReadOnly()))]) -> Any:
+async def via_policy_only_post(doc: Annotated[Doc, Requires(ReadOnly())]) -> Any:
     return {"name": doc.name}
 
 
 # a named action: the policy supplies the resource, the permission names what to check
 @app.post("/publish")
-async def publish(doc: Annotated[Doc, Depends(Requires(ReadOnly(), ReadOnly.publish))]) -> Any:
+async def publish(doc: Annotated[Doc, Requires(ReadOnly(), ReadOnly.publish)]) -> Any:
     return {"name": doc.name}
 
 
 @app.post("/archive")
-async def archive(doc: Annotated[Doc, Depends(Requires(ReadOnly(), ReadOnly.archive))]) -> Any:
+async def archive(doc: Annotated[Doc, Requires(ReadOnly(), ReadOnly.archive)]) -> Any:
     return {"name": doc.name}
 
 
@@ -251,8 +251,8 @@ class TestWithAPolicy:
         policy = ReadOnly()
         requires = Requires(policy)
 
-        assert requires.resource_dep is DocDep
-        assert requires.requirement is policy
+        assert requires.dependency.resource_dep is DocDep
+        assert requires.dependency.requirement is policy
 
     def test_a_named_action_overrides_method_dispatch(self, app_client: TestClient) -> None:
         # POST would map to `create` (Deny), but the named action wins
@@ -267,8 +267,8 @@ class TestWithAPolicy:
     def test_a_named_action_wires_both_sides(self) -> None:
         requires = Requires(ReadOnly(), ReadOnly.archive)
 
-        assert requires.resource_dep is DocDep
-        assert requires.requirement is ReadOnly.archive
+        assert requires.dependency.resource_dep is DocDep
+        assert requires.dependency.requirement is ReadOnly.archive
 
     def test_a_policy_class_is_rejected(self) -> None:
         with pytest.raises(TypeError, match="takes a policy instance, not the class"):
@@ -293,7 +293,7 @@ class TestWithAPolicy:
         add_permissions(raw_app)
 
         @raw_app.get("/raw")
-        async def route(doc: Annotated[Doc, Depends(Requires(RawPolicy()))]) -> Any:
+        async def route(doc: Annotated[Doc, Requires(RawPolicy())]) -> Any:
             return {"name": doc.name}
 
         with TestClient(raw_app) as client:
@@ -307,22 +307,35 @@ class TestWithAPolicy:
         add_permissions(bare_app)
 
         @bare_app.get("/bare")
-        async def route(value: Annotated[Any, Depends(Requires(Bare()))]) -> Any:
+        async def route(value: Annotated[Any, Requires(Bare())]) -> Any:
             return {"value": value}
 
         with TestClient(bare_app) as client:
             assert client.get("/bare").json() == {"value": None}
 
 
-def test_requires_returns_a_dataclass() -> None:
-    assert is_dataclass(Requires(DocDep, Allow()))
+def test_requires_returns_a_dependency() -> None:
+    # usable straight inside `Annotated[...]`, no `Depends()` wrapper needed
+    requires = Requires(DocDep, Allow())
+
+    assert isinstance(requires, params.Depends)
+    assert is_dataclass(requires.dependency)
+
+
+def test_use_cache_is_forwarded() -> None:
+    assert Requires(DocDep, Allow()).use_cache is True
+    assert Requires(DocDep, Allow(), use_cache=False).use_cache is False
+
+
+def test_use_cache_is_forwarded_for_the_policy_form() -> None:
+    assert Requires(ReadOnly(), use_cache=False).use_cache is False
 
 
 def test_requires_wires_its_fields_positionally() -> None:
     requires = Requires(DocDep, Allow())
 
-    assert requires.resource_dep is DocDep
-    assert isinstance(requires.requirement, Allow)
+    assert requires.dependency.resource_dep is DocDep
+    assert isinstance(requires.dependency.requirement, Allow)
 
 
 def test_neither_loader_nor_permission_parameters_reach_openapi() -> None:

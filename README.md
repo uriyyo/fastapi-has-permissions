@@ -293,7 +293,7 @@ or with `Requires`, which checks *and* injects the loaded resource:
 
 ```python
 @app.get("/posts/{post_id}")
-async def read(post: Annotated[Post, Depends(Requires(PostPolicy()))]) -> Post:
+async def read(post: Annotated[Post, Requires(PostPolicy())]) -> Post:
     return post
 ```
 
@@ -311,7 +311,7 @@ class PostPolicy(Policy[Post]):
 
 
 @app.post("/posts/{post_id}/publish")
-async def publish(post: Annotated[Post, Depends(Requires(PostPolicy(), PostPolicy.publish))]) -> Post:
+async def publish(post: Annotated[Post, Requires(PostPolicy(), PostPolicy.publish)]) -> Post:
     return post
 ```
 

@@ -112,7 +112,7 @@ add `Requires` on the routes that operate on a single object.
 
 ```python
 @posts.get("/{post_id}")
-async def get_post(post: Annotated[Post, Depends(Requires(PostPolicy()))]) -> Post:
+async def get_post(post: Annotated[Post, Requires(PostPolicy())]) -> Post:
     return post
 ```
 
@@ -137,7 +137,7 @@ add_permissions(app)
 
 ```python
 @app.get("/posts/{post_id}")
-async def read(post: Annotated[Post, Depends(Requires(PostPolicy()))]) -> Post:
+async def read(post: Annotated[Post, Requires(PostPolicy())]) -> Post:
     # if we got here the check passed, and `post` is already loaded
     return post
 ```
@@ -149,7 +149,8 @@ Two properties worth stating outright:
 - **The resource is loaded once.** It is resolved through the request's inject scope, so
   several `Requires` on one route share a single load.
 
-`Requires(...)` returns a dependency callable, so it goes inside `Depends(...)`.
+`Requires(...)` returns a `Depends`, so it goes straight into `Annotated[...]` -- no extra
+`Depends()` wrapper. Pass `use_cache=False` to opt out of FastAPI's per-request caching.
 
 ## Actions beyond CRUD
 
@@ -165,7 +166,7 @@ class PostPolicy(Policy[Post]):
 
 
 @app.post("/posts/{post_id}/publish")
-async def publish(post: Annotated[Post, Depends(Requires(PostPolicy(), PostPolicy.publish))]) -> Post:
+async def publish(post: Annotated[Post, Requires(PostPolicy(), PostPolicy.publish)]) -> Post:
     return post
 ```
 
@@ -186,7 +187,7 @@ The last form needs no policy at all, so object-level checks are available to pl
 permissions too:
 
 ```python
-async def read(post: Annotated[Post, Depends(Requires(PostDep, IsAuthenticated(AuthDep)))]) -> Post: ...
+async def read(post: Annotated[Post, Requires(PostDep, IsAuthenticated(AuthDep))]) -> Post: ...
 ```
 
 ## Declaring `__resource__`
@@ -204,7 +205,7 @@ DraftPolicy = PostPolicy.bind(DepFactory[Post, get_draft])
 
 
 @app.get("/drafts/{post_id}")
-async def draft(post: Annotated[Post, Depends(Requires(DraftPolicy()))]) -> Post:
+async def draft(post: Annotated[Post, Requires(DraftPolicy())]) -> Post:
     return post
 ```
 
