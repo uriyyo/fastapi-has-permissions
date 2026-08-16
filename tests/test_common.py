@@ -5,7 +5,8 @@ import pytest
 from fastapi import Depends, FastAPI, Header, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import add_permissions
+import fastapi_has_permissions as root
+from fastapi_has_permissions import add_permissions, common
 from fastapi_has_permissions.common import HasRole, HasScope, IsAuthenticated
 
 
@@ -384,3 +385,9 @@ def app_client() -> Iterator[TestClient]:
 def test_permissions(endpoint, headers, expected_status, app_client) -> None:
     response = app_client.get(endpoint, headers=headers)
     assert response.status_code == expected_status
+
+
+def test_common_is_re_exported_from_the_root() -> None:
+    for name in common.__all__:
+        assert getattr(root, name, None) is getattr(common, name), name
+        assert name in root.__all__, name

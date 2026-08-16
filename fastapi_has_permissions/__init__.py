@@ -17,14 +17,17 @@ from ._wrappers import (
     Undocumented,
     WithError,
 )
+from .common import Allow, Deny, HasRole, HasScope, IsAuthenticated, no_auto_error
 from .types import Dep, DepFactory, Resolved, Resource
 
 __all__ = [
     "Advisory",
     "AllPermissions",
+    "Allow",
     "AllowSkipped",
     "AnyPermissions",
     "CheckResult",
+    "Deny",
     "DenySkipped",
     "Dep",
     "DepFactory",
@@ -33,6 +36,9 @@ __all__ = [
     "FailOnExc",
     "Failed",
     "Given",
+    "HasRole",
+    "HasScope",
+    "IsAuthenticated",
     "NotPermission",
     "Permission",
     "PermissionEvaluator",
@@ -52,6 +58,7 @@ __all__ = [
     "is_failed",
     "is_skipped",
     "is_successful",
+    "no_auto_error",
     "permission",
     "skip",
 ]
