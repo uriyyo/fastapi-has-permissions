@@ -1,6 +1,7 @@
-from collections.abc import Callable, Coroutine, Sequence
-from typing import TYPE_CHECKING, Any, TypeAlias
+from collections.abc import Callable, Collection, Coroutine, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias, runtime_checkable
 
+from fastapi.params import Depends
 from fastapi_injected import DepFactory
 from fastapi_injected.types import DepReturn
 from typing_extensions import TypeVar
@@ -23,6 +24,13 @@ AsyncFunc: TypeAlias = Callable[..., Coroutine[Any, Any, _TAny]]
 
 type Exceptions = tuple[type[BaseException], ...]
 
+
+@runtime_checkable
+class HasLazyDepends(Protocol):
+    def __lazy_depends__(self, methods: Collection[str], /) -> Iterable[Depends]:
+        pass
+
+
 __all__ = [
     "AsyncFunc",
     "Dep",
@@ -30,5 +38,6 @@ __all__ = [
     "Deps",
     "Exceptions",
     "Func",
+    "HasLazyDepends",
     "Resource",
 ]

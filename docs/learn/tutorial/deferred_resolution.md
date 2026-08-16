@@ -129,5 +129,6 @@ pays to load the article at all.
 !!! note
 
     A permission's dependencies are resolved on demand rather than declared as route
-    dependencies. That is what makes short-circuiting possible, and it is why a
-    permission's parameters do not appear in the OpenAPI schema.
+    dependencies -- that is what makes short-circuiting possible. They are still
+    documented: `add_permissions()` wraps `app.openapi()` so the schema describes what a
+    route's permissions require, without resolving anything to work it out.

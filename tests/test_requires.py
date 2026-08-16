@@ -362,7 +362,9 @@ def test_requires_wires_its_fields_positionally() -> None:
     assert isinstance(requires.dependency.requirement, Allow)
 
 
-def test_neither_loader_nor_permission_parameters_reach_openapi() -> None:
-    # both are resolved imperatively through the inject scope rather than declared as
-    # sub-dependencies, so their own parameters never appear in the schema
-    assert "parameters" not in app.openapi()["paths"]["/with-deps"]["get"]
+def test_both_the_permission_and_the_loader_are_documented() -> None:
+    # the loader reads the request just as the permission does, so what it needs is the
+    # caller's to supply and belongs in the schema too
+    parameters = app.openapi()["paths"]["/with-deps"]["get"]["parameters"]
+
+    assert sorted(param["name"] for param in parameters) == ["x-name", "x-role"]

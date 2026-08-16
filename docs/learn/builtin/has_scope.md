@@ -86,12 +86,10 @@ async def read_write():
 `Security(resolver, scopes=...)` instead of `Depends(resolver)`, which is what populates the
 `security_scopes` argument its check reads.
 
-!!! note
-
-    The scopes do **not** reach the OpenAPI schema. A permission resolves its dependencies at
-    check time rather than declaring them on the route, so nothing about it is visible to schema
-    generation -- see [Deferred Resolution](../tutorial/deferred_resolution.md). Declare
-    `Security(...)` on the route itself if you need the scopes documented.
+The required scopes also reach the OpenAPI schema: `add_permissions()` describes each
+route's permission tree to `app.openapi()`, so `HasScope` contributes both a `security`
+requirement and the `securitySchemes` entry backing it -- from a composition or a wrapper
+just as much as from a bare permission.
 
 ## How `check_permissions` Works
 

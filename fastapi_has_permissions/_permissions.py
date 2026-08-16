@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import inspect
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import field
 from typing import TYPE_CHECKING, Any, ClassVar, final
 
-from fastapi import Depends
 from fastapi.dependencies.utils import get_typed_signature
+from fastapi.params import Depends
 from fastapi_injected import is_dep
 
 from ._bases import ForceDataclass
@@ -47,6 +47,17 @@ class Permission(
         for param in get_typed_signature(type(self)).parameters.values():
             if is_dep(param.annotation):
                 yield getattr(self, param.name)
+
+    def __sub_permissions__(self) -> Iterable[Permission]:
+        # the permissions this one delegates to - a leaf has none. Walking these is how
+        # the schema pass reaches permissions that only ever resolve at check time.
+        return ()
+
+    def __lazy_depends__(self, methods: Collection[str] = (), /) -> Iterable[Depends]:
+        yield self.__resolver_to_depends__(PermissionResolver(self))
+
+        for sub in self.__sub_permissions__():
+            yield from sub.__lazy_depends__(methods)
 
     def __check_signature__(self) -> inspect.Signature:
         return get_signature_with_deps(self.check_permissions, [*self.__deps__()])
@@ -100,6 +111,9 @@ class Permission(
 class _AllAnyPermissions(Permission):
     permissions: Sequence[Permission]
 
+    def __sub_permissions__(self) -> Iterable[Permission]:
+        return self.permissions
+
 
 def _flatten(permission: Permission, cls: type[_AllAnyPermissions]) -> list[Permission]:
     # only absorb a same-kind composite that carries no error config of its own,
@@ -120,6 +134,9 @@ def _combine[TComposite: _AllAnyPermissions](
 
 class _SinglePermission(Permission):
     permission: Permission
+
+    def __sub_permissions__(self) -> Iterable[Permission]:
+        return (self.permission,)
 
 
 class PermissionWrapper(_SinglePermission):

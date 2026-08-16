@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import cast, overload
+from collections.abc import Callable, Collection, Iterable
+from typing import Any, cast, overload
 
 from fastapi.params import Depends
-from fastapi_injected import resolve
+from fastapi_injected import is_dep, resolve, unwrap_dep_dependency
 
 from ._bases import ForceDataclass
 from ._permissions import Permission
@@ -16,11 +17,16 @@ class RequiresResolver[R](ForceDataclass):
     resource_dep: Resource[R]
     requirement: Permission | Policy[R]
 
+    def __lazy_depends__(self, methods: Collection[str], /) -> Iterable[Depends]:
+        # the loader reads the request as well, so what it needs is the caller's to supply
+        resource = unwrap_dep_dependency(self.resource_dep) if is_dep(self.resource_dep) else self.resource_dep
+
+        yield Depends(cast("Callable[..., Any]", resource))
+        yield from self.requirement.__lazy_depends__(methods)
+
     async def __call__(self) -> R:
         await resolve(self.requirement)
 
-        # the loader reads the request too, so a parameter it is missing is the caller's
-        # mistake - a 422, exactly as it would be on the handler itself
         with as_validation_error():
             return cast("R", await resolve(self.resource_dep))
 

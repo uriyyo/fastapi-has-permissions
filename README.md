@@ -95,8 +95,9 @@ Depends(~HasAuthorizationHeader())
 All three operators are **lazy**: each branch's dependencies are resolved at request
 time, one branch at a time, and evaluation short-circuits as soon as the outcome is
 decided — a failing or expensive dependency in a losing branch is never resolved.
-The trade-off is that a permission's dependencies are not declared as route
-dependencies, so they do not appear in the OpenAPI schema.
+Permissions still document themselves: `add_permissions()` teaches `app.openapi()` what
+each route's permission tree requires, so headers, query params and OAuth2 scopes appear
+in the schema without ever being resolved to produce it.
 
 When a composed check fails, the failing permission's message, status code, error
 code, and headers are propagated: `&` reports the first failing permission, and `|`

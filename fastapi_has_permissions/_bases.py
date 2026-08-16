@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, dataclass_transform
+from typing import TYPE_CHECKING, Any, dataclass_transform
 
 
 def _hash_with_fallback(original_hash_func: Callable[[Any], int]) -> Callable[[Any], int]:
@@ -37,6 +37,11 @@ class ForceDataclass:
             return
 
         cls.__hash__ = _hash_with_fallback(cls.__hash__)  # type: ignore[ty:invalid-assignment]
+
+    if TYPE_CHECKING:
+
+        def __hash__(self: Any) -> int:
+            pass
 
 
 __all__ = [

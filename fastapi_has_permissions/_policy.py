@@ -1,7 +1,8 @@
-from collections.abc import Generator
+from collections.abc import Collection, Generator, Iterable
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Self, cast
 
 from fastapi import Request
+from fastapi.params import Depends
 from fastapi_injected import resolve
 from typing_extensions import TypeVar
 
@@ -39,8 +40,8 @@ class Policy(ForceDataclass, Generic[TResource]):
 
         return cast(type[Self], _BoundedPolicy)
 
-    def __get_permissions__(self, request: Request) -> Generator[Permission]:
-        match request.method.upper():
+    def __get_permissions_for_method__(self, method: str, /) -> Generator[Permission]:
+        match method.upper():
             case "GET" | "QUERY" | "HEAD":
                 yield self.read
             case "POST":
@@ -51,6 +52,14 @@ class Policy(ForceDataclass, Generic[TResource]):
                 yield self.delete
             case _:
                 yield self.default
+
+    def __get_permissions__(self, request: Request) -> Generator[Permission]:
+        yield from self.__get_permissions_for_method__(request.method)
+
+    def __lazy_depends__(self, methods: Collection[str], /) -> Iterable[Depends]:
+        for method in methods:
+            for permission in self.__get_permissions_for_method__(method):
+                yield from permission.__lazy_depends__(methods)
 
     async def __call__(self, request: Request) -> None:
         for permission in self.__get_permissions__(request):

@@ -242,10 +242,8 @@ as when the permission is used through `Depends` directly.
 `Requires(PostPolicy)` raises `TypeError`. The policy has to be constructed, because the
 instance is what FastAPI resolves.
 
-### Permission parameters do not appear in OpenAPI
+### A policy documents only the action matching the method
 
-Permissions resolve their dependencies at check time rather than declaring them as
-sub-dependencies -- that is what lets a check be skipped without paying for it. Checks are
-still enforced, but a header a permission requires will not be documented in the schema, and
-generated clients will not know to send it. This applies to permissions generally, not just to
-policies; see [Deferred Resolution](deferred_resolution.md).
+`add_permissions()` puts each route's permission requirements into the OpenAPI schema. For
+a policy that means the action its verb maps to -- a `GET` route advertises what `read`
+needs, not what `delete` needs.
