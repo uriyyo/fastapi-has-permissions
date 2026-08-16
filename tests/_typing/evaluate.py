@@ -1,6 +1,13 @@
 from typing import Annotated, Literal
 
-from fastapi_has_permissions import CheckResult, Evaluate, PermissionEvaluator, evaluate, is_successful
+from fastapi_has_permissions import (
+    CheckResult,
+    Eval,
+    Evaluate,
+    PermissionEvaluator,
+    evaluate,
+    is_successful,
+)
 
 from .deps import (
     Allow,
@@ -32,3 +39,15 @@ async def _evaluates(evaluator: Evaluate) -> None:
 async def _negatives() -> None:
     await evaluate("a permission")  # type: ignore[ty:invalid-argument-type]
     await PermissionEvaluator().check(RoleDep)  # type: ignore[ty:invalid-argument-type]
+
+
+# `Eval[T, permission]` annotates as its first argument - the permission rides along as
+# metadata, the same way `DepFactory[T, factory]` carries its factory
+static_assert(is_equivalent_to(Eval[CheckResult, Allow()], CheckResult))
+static_assert(is_equivalent_to(Eval[CheckResult, IsAdmin(RoleDep)], CheckResult))
+static_assert(is_equivalent_to(Eval[bool, Allow()], bool))
+
+
+async def _evaluates_in_a_route(result: Eval[CheckResult, Allow()]) -> None:
+    if is_successful(result):
+        static_assert(is_equivalent_to(TypeOf[result], Literal[True]))

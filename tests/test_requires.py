@@ -84,11 +84,6 @@ async def skipped(doc: Annotated[Doc, Requires(DocDep, Skipper())]) -> Any:
     return {"name": doc.name}
 
 
-@app.get("/quiet")
-async def quiet(doc: Annotated[Doc, Requires(DocDep, Deny(auto_error=False))]) -> Any:
-    return {"name": doc.name}
-
-
 # a loader whose own input the caller must supply, and which has no default
 async def get_strict_doc(x_strict: Annotated[str, Header()]) -> Doc:
     return Doc(name=x_strict)
@@ -212,15 +207,6 @@ def test_a_loader_validation_error_is_a_422() -> None:
 
 def test_skip_denies(app_client: TestClient) -> None:
     assert app_client.get("/skip").status_code == status.HTTP_403_FORBIDDEN
-
-
-def test_auto_error_false_does_not_raise(app_client: TestClient) -> None:
-    # the permission is resolved through `Permission.__call__`, so `auto_error` is honoured;
-    # the resource is still handed to the handler
-    response = app_client.get("/quiet", headers={"x-name": "hello"})
-
-    assert response.status_code == status.HTTP_200_OK
-    assert response.json() == {"name": "hello"}
 
 
 @pytest.mark.parametrize(

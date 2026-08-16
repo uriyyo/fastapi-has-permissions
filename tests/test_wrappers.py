@@ -11,6 +11,7 @@ from fastapi_has_permissions import (
     AllowSkipped,
     CheckResult,
     DenySkipped,
+    Eval,
     FailOnExc,
     Permission,
     SkipOnExc,
@@ -209,8 +210,8 @@ async def route() -> str:
 
 
 @app.get("/no-auto-error")
-async def no_auto_error_route(
-    result: Annotated[CheckResult, Depends(AllowSkipped(Denies(), auto_error=False))],
+async def eval_route(
+    result: Eval[CheckResult, AllowSkipped(Denies())],
 ) -> dict[str, bool]:
     return {"denied": is_failed(result)}
 
@@ -401,7 +402,7 @@ def test_unlisted_exception_is_not_swallowed(app_client) -> None:
         app_client.get("/unlisted-exc")
 
 
-def test_no_auto_error(app_client) -> None:
+def test_eval_returns_the_result(app_client) -> None:
     response = app_client.get("/no-auto-error")
 
     assert response.status_code == status.HTTP_200_OK

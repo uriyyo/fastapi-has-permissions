@@ -1,5 +1,5 @@
 from ._app import add_permissions
-from ._evaluate import Evaluate, PermissionEvaluator, evaluate
+from ._evaluate import Eval, Evaluate, PermissionEvaluator, evaluate
 from ._func import permission
 from ._given import Given
 from ._permissions import AllPermissions, AnyPermissions, NotPermission, Permission, PermissionWrapper
@@ -31,6 +31,7 @@ __all__ = [
     "DenySkipped",
     "Dep",
     "DepFactory",
+    "Eval",
     "Evaluate",
     "ExcHandler",
     "FailOnExc",

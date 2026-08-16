@@ -11,6 +11,7 @@ from fastapi_has_permissions import (
     AnyPermissions,
     CheckResult,
     DepFactory,
+    Eval,
     Permission,
     add_permissions,
 )
@@ -69,12 +70,9 @@ async def route() -> str:
 
 
 @app.get("/auto-error-test")
-async def auto_error_false_route(
+async def eval_route(
     *,
-    has_auth: Annotated[
-        CheckResult,
-        Depends(HasAuthorizationHeader(auto_error=False)),
-    ],
+    has_auth: Eval[CheckResult, HasAuthorizationHeader()],
 ) -> dict[str, bool]:
     return {"has_auth": bool(has_auth)}
 
@@ -226,7 +224,7 @@ def test_permissions(endpoint, headers, expected_status, app_client) -> None:
         ),
     ],
 )
-def test_auto_error_false(headers, expected_has_auth, app_client) -> None:
+def test_eval_returns_the_result(headers, expected_has_auth, app_client) -> None:
     response = app_client.get("/auto-error-test", headers=headers)
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {"has_auth": expected_has_auth}
@@ -257,7 +255,6 @@ def test_flattening_does_not_mix_operators() -> None:
             id="status-code",
         ),
         pytest.param(AnyPermissions([HasRole("a"), HasRole("b")], code="custom_code"), id="code"),
-        pytest.param(AnyPermissions([HasRole("a"), HasRole("b")], auto_error=False), id="auto-error"),
     ],
 )
 def test_configured_composite_is_not_flattened_away(configured) -> None:

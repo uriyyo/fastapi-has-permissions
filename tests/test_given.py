@@ -66,7 +66,7 @@ def app_client() -> Iterator[TestClient]:
 async def test_given_evaluates_off_request() -> None:
     # the point of `Given` - no request, no scope, no path params
     assert is_successful(await evaluate(OwnsStudent(Given(uuid.UUID(int=1)))))
-    assert is_failed(await evaluate(OwnsStudent(Given(uuid.UUID(int=2)), auto_error=False)))
+    assert is_failed(await evaluate(OwnsStudent(Given(uuid.UUID(int=2)))))
 
 
 @pytest.mark.asyncio

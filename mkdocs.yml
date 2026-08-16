@@ -52,7 +52,7 @@ nav:
           - "Function-Based Permissions": learn/tutorial/function_based.md
           - "Boolean Composition": learn/tutorial/boolean_composition.md
           - "Custom Error Responses": learn/tutorial/custom_errors.md
-          - "Auto Error": learn/tutorial/auto_error.md
+          - "Permission Results": learn/tutorial/eval.md
           - "Skip & Fail Helpers": learn/tutorial/skip_and_fail.md
           - "Permission Wrappers": learn/tutorial/wrappers.md
           - "Deferred Resolution": learn/tutorial/deferred_resolution.md

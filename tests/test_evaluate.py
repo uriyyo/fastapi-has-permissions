@@ -8,6 +8,8 @@ from fastapi_injected import push_overrides
 
 from fastapi_has_permissions import (
     AllowSkipped,
+    CheckResult,
+    Eval,
     Evaluate,
     Permission,
     add_permissions,
@@ -35,6 +37,16 @@ class AlwaysSkip(Permission):
 
 app = FastAPI()
 add_permissions(app)
+
+
+@app.get("/eval")
+async def eval_route(result: Eval[CheckResult, HasAdminRole()]) -> dict[str, bool]:
+    return {"is_admin": is_successful(result)}
+
+
+@app.get("/guard", dependencies=[Depends(HasAdminRole())])
+async def guard_route() -> str:
+    return "You have access to this endpoint!"
 
 
 @app.get("/imperative-check")
@@ -118,3 +130,37 @@ async def test_evaluate_standalone_with_overrides() -> None:
 
     with push_overrides({get_role: "user"}):
         assert is_failed(await evaluate(HasAdminRole()))
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected"),
+    [
+        pytest.param({"x-role": "admin"}, True, id="allowed"),
+        pytest.param({}, False, id="denied"),
+    ],
+)
+def test_eval_returns_the_result_instead_of_raising(headers, expected, app_client) -> None:
+    response = app_client.get("/eval", headers=headers)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == {"is_admin": expected}
+
+
+def test_a_permission_used_as_a_guard_always_raises(app_client) -> None:
+    # a permission reached as a dependency is an enforcement point - there is no
+    # opt-out, `Eval` is how a caller asks for the result instead
+    assert app_client.get("/guard").status_code == status.HTTP_403_FORBIDDEN
+    assert app_client.get("/guard", headers={"x-role": "admin"}).status_code == status.HTTP_200_OK
+
+
+def test_eval_rejects_a_malformed_subscript() -> None:
+    with pytest.raises(TypeError):
+        Eval[CheckResult]
+
+    with pytest.raises(TypeError):
+        Eval[CheckResult, "not a permission"]
+
+
+def test_eval_is_value_equal() -> None:
+    assert Eval[CheckResult, HasAdminRole()] == Eval[CheckResult, HasAdminRole()]
+    assert Eval[CheckResult, HasAdminRole()] != Eval[CheckResult, AlwaysSkip()]

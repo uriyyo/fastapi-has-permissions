@@ -72,10 +72,6 @@ class ComposedPolicy(Policy[Doc]):
     update = Allow() & Deny()
 
 
-class QuietPolicy(Policy[Doc]):
-    read = Deny(auto_error=False)
-
-
 app = FastAPI()
 add_permissions(app)
 
@@ -94,7 +90,6 @@ _register("/deny", DenyAll())
 _register("/masked", MaskedPolicy())
 _register("/skip", SkipPolicy())
 _register("/composed", ComposedPolicy())
-_register("/quiet", QuietPolicy())
 
 
 @pytest.fixture(scope="session")
@@ -155,11 +150,6 @@ def test_error_config_propagates_from_the_action(app_client: TestClient) -> None
 def test_skip_at_the_root_denies(app_client: TestClient) -> None:
     # a skip is an abstention, not an approval
     assert app_client.get("/skip").status_code == status.HTTP_403_FORBIDDEN
-
-
-def test_auto_error_false_does_not_raise(app_client: TestClient) -> None:
-    # the action is resolved through `Permission.__call__`, so `auto_error` is honoured
-    assert app_client.get("/quiet").status_code == status.HTTP_200_OK
 
 
 @pytest.mark.parametrize(

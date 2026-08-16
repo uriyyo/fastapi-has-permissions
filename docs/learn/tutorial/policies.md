@@ -233,9 +233,9 @@ class PostPolicy(Policy[Post]):
     create = WithError(HasRole(RoleDep, "author"), message="Only authors may post", code="not_an_author")
 ```
 
-An action's `message` / `status_code` / `code` / `headers` reach the client unchanged, a
-`skip()` reaching the root denies, and `auto_error=False` suppresses the raise -- the same
-as when the permission is used through `Depends` directly.
+An action's `message` / `status_code` / `code` / `headers` reach the client unchanged and a
+`skip()` reaching the root denies -- the same as when the permission is used through
+`Depends` directly.
 
 ### Pass a policy instance, not the class
 

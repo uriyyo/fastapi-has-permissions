@@ -3,7 +3,6 @@ from __future__ import annotations
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Collection, Iterable, Sequence
-from dataclasses import field
 from typing import TYPE_CHECKING, Any, ClassVar, final
 
 from fastapi.dependencies.utils import get_typed_signature
@@ -38,7 +37,7 @@ class Permission(
     HTTPExcRaiser,
     ABC,
 ):
-    auto_error: bool = field(default=True, kw_only=True)
+    __auto_error__: ClassVar[bool] = True
 
     def __post_init__(self) -> None:
         pass
@@ -87,7 +86,7 @@ class Permission(
             case _:
                 result = True
 
-        if self.auto_error and not result:
+        if self.__auto_error__ and not result:
             self.raise_http_exception(message, status_code, code, headers)
 
         return ret
@@ -118,7 +117,7 @@ class _AllAnyPermissions(Permission):
 def _flatten(permission: Permission, cls: type[_AllAnyPermissions]) -> list[Permission]:
     # only absorb a same-kind composite that carries no error config of its own,
     # otherwise flattening would silently discard that config
-    if isinstance(permission, cls) and permission.auto_error and permission.has_default_error_config():
+    if isinstance(permission, cls) and permission.has_default_error_config():
         return [*permission.permissions]
 
     return [permission]

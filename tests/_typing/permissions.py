@@ -46,7 +46,6 @@ static_assert(is_equivalent_to(TypeOf[IsAdmin(role_dep=RoleDep)], IsAdmin))
 # the error config is keyword-only and inherited from `HTTPExcRaiser`
 _configured = IsAdmin(
     RoleDep,
-    auto_error=False,
     message="nope",
     status_code=404,
     code="gone",
@@ -59,7 +58,6 @@ def _negatives() -> None:
     IsAdmin()  # type: ignore[ty:missing-argument]
     IsAdmin(RoleDep, RoleDep)  # type: ignore[ty:too-many-positional-arguments]
     IsAdmin(DocDep)  # type: ignore[ty:invalid-argument-type]
-    IsAdmin(RoleDep, auto_error="yes")  # type: ignore[ty:invalid-argument-type]
     IsAdmin(RoleDep, status_code="404")  # type: ignore[ty:invalid-argument-type]
 
     Allow() & 1  # type: ignore[ty:unsupported-operator]

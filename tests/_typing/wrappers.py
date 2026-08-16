@@ -38,7 +38,6 @@ static_assert(is_equivalent_to(TypeOf[AllowSkipped(Advisory(Undocumented(IsAdmin
 
 # the wrapped permission is a positional field, the error config stays keyword-only
 static_assert(is_equivalent_to(TypeOf[AllowSkipped(permission=Allow())], AllowSkipped))
-static_assert(is_equivalent_to(TypeOf[AllowSkipped(Allow(), auto_error=False)], AllowSkipped))
 
 # the exception handlers take a tuple of exception types alongside the permission
 static_assert(is_equivalent_to(TypeOf[SkipOnExc(Allow(), (ValueError,))], SkipOnExc))
