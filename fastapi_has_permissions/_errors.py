@@ -7,10 +7,11 @@ from fastapi import HTTPException, status
 
 if TYPE_CHECKING:
     from ._permissions import Permission
+    from ._results import Source
 
 
 class PermissionDeniedError(Exception):
-    def __init__(
+    def __init__(  # noqa: PLR0913 - one keyword per field of the denial it reports
         self,
         message: str,
         /,
@@ -19,6 +20,7 @@ class PermissionDeniedError(Exception):
         code: str | None = None,
         headers: dict[str, str] | None = None,
         permission: Permission | None = None,
+        source: Source | None = None,
     ) -> None:
         super().__init__(message)
 
@@ -27,6 +29,8 @@ class PermissionDeniedError(Exception):
         self.code = code
         self.headers = headers
         self.permission = permission
+        # the branch of the permission tree that produced this denial, for logs
+        self.source = source
 
     def to_http_exception(self) -> HTTPException:
         detail: Any = self.message
@@ -89,6 +93,7 @@ class ErrorConfig:
         status_code: int | None = None,
         code: str | None = None,
         headers: dict[str, str] | None = None,
+        source: Source | None = None,
     ) -> PermissionDeniedError:
         return PermissionDeniedError(
             self.resolve_exc_message(message),
@@ -96,6 +101,7 @@ class ErrorConfig:
             code=self.resolve_exc_code(code),
             headers=self.resolve_exc_headers(headers),
             permission=cast("Permission", self),
+            source=source,
         )
 
     def raise_error(
@@ -104,8 +110,9 @@ class ErrorConfig:
         status_code: int | None = None,
         code: str | None = None,
         headers: dict[str, str] | None = None,
+        source: Source | None = None,
     ) -> NoReturn:
-        raise self.build_error(message, status_code, code, headers)
+        raise self.build_error(message, status_code, code, headers, source)
 
 
 __all__ = [

@@ -62,7 +62,7 @@ class PermissionEvaluator(ForceDataclass):
         if self.on_failure is not None:
             return self.on_failure(permission, failed)
 
-        return permission.build_error(failed.reason, failed.status_code, failed.code, failed.headers)
+        return permission.build_error(failed.reason, failed.status_code, failed.code, failed.headers, failed.source)
 
 
 evaluate = PermissionEvaluator()

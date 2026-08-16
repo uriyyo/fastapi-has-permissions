@@ -139,6 +139,49 @@ class Quieted(ResultMapper):
         return result
 ```
 
+## Where a Result Came From
+
+A denial in a tree of rules says little on its own. Every `Failed` and `Skipped` carries a
+`source` -- the branch that produced it, rendered as the decision it made:
+
+```python
+result = await evaluate(
+    When(IsTeacherActor(), OwnsStudent(Given(student_id)))
+    | When(IsStudentActor(), StudentIsSelf(Given(student_id)))
+)
+
+print(result.source)
+# OwnsStudent[failed: student 42 is not yours]
+#   | When(IsStudentActor[failed: Permission denied])[skipped: Permission denied]
+```
+
+Each entry is `Name[outcome]`, or `Name[outcome: reason]` where there is a reason to give.
+Branches joined by `|` and `&` render as a chain, so a trace shows what ran and what each
+branch decided:
+
+```
+IsStudent[failed: not a student] | IsTeacher[skipped: not applicable]
+Allow[success] & IsStudent[failed: not a student]
+Advisory(IsStudent[failed: not a student])[skipped: not a student]
+```
+
+Because `&` short-circuits, its chain stops at the first failure -- what you see is what ran.
+
+The same trace reaches the raised
+[`PermissionDeniedError`](custom_errors.md#the-error-a-denial-raises) as `exc.source`, which is
+usually where you want it:
+
+```python
+except PermissionDeniedError as exc:
+    log.warning("denied: %s", exc.source)
+```
+
+!!! note
+
+    A source is diagnostic, so it takes no part in equality -- two denials of the same kind
+    compare equal however the tree arrived at them. Set `__trace_name__` on a permission to
+    report it under a friendlier name than its class.
+
 ## How Skip Interacts with Composition
 
 Skipped permissions have special behavior when combined with `&` and `|`:

@@ -36,7 +36,6 @@ def _mismatch(name: str, outcome: str, field: str, actual: object, expected: obj
 
 
 async def assert_allowed(permission: Permission, /) -> CheckResult:
-    """Assert that `permission` succeeds, and return its result."""
     result = await evaluate(permission)
 
     if not is_successful(result):
@@ -56,11 +55,6 @@ async def assert_denied(
     status_code: int | None = None,
     code: str | None = None,
 ) -> Failed:
-    """Assert that `permission` denies, optionally with a given error configuration.
-
-    An abstention is *not* a denial here, even though one denies at the root - assert it with
-    `assert_skipped` so a rule that stopped applying cannot pass as a rule that refused.
-    """
     result = await evaluate(permission)
     name = _name(permission)
 
@@ -88,7 +82,6 @@ async def assert_denied(
 
 
 async def assert_skipped(permission: Permission, /, *, reason: str | None = None) -> Skipped:
-    """Assert that `permission` abstains - that it has no opinion about this caller."""
     result = await evaluate(permission)
     name = _name(permission)
 

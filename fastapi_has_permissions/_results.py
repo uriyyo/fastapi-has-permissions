@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import field, replace
 from typing import TYPE_CHECKING, Any, Literal, NoReturn
 
 from typing_extensions import TypeIs
@@ -22,8 +23,38 @@ class PermissionCheckFailed(Exception):  # noqa: N818
         self.reason = reason
 
 
+type Outcome = Literal["success", "failed", "skipped"]
+
+
+class Source(ForceDataclass):
+    name: str
+    outcome: Outcome
+    reason: str | None = None
+    children: tuple[Source, ...] = ()
+    operator: str | None = None
+
+    def __str__(self) -> str:
+        return self.render()
+
+    def render(self, *, nested: bool = False) -> str:
+        if self.operator:
+            joined = f" {self.operator} ".join(child.render(nested=True) for child in self.children)
+
+            return f"({joined})" if nested else joined
+
+        label = f"{self.outcome}: {self.reason}" if self.reason else self.outcome
+
+        if self.children:
+            inner = ", ".join(child.render() for child in self.children)
+
+            return f"{self.name}({inner})[{label}]"
+
+        return f"{self.name}[{label}]"
+
+
 class Skipped(ForceDataclass):
     reason: str | None = None
+    source: Source | None = field(default=None, compare=False)
 
 
 class Failed(ForceDataclass):
@@ -31,6 +62,7 @@ class Failed(ForceDataclass):
     status_code: int | None = None
     code: str | None = None
     headers: dict[str, str] | None = None
+    source: Source | None = field(default=None, compare=False)
 
     def __bool__(self) -> bool:
         return False
@@ -88,7 +120,7 @@ async def call_permissions_check(
     except PermissionCheckFailed as exc:
         return to_failed(permission, reason=exc.reason)
     except SkipPermissionCheck as exc:
-        return to_skipped(reason=exc.reason)
+        return to_skipped(permission, reason=exc.reason)
 
     match result:
         case False:
@@ -97,17 +129,49 @@ async def call_permissions_check(
             return result
 
 
-def to_skipped(reason: str | None = None) -> Skipped:
-    return Skipped(reason=reason)
+def to_skipped(permission: Permission, /, reason: str | None = None) -> Skipped:
+    return Skipped(
+        reason=reason,
+        source=Source(trace_name(permission), "skipped", reason),
+    )
 
 
 def to_failed(permission: Permission, /, reason: str | None = None) -> Failed:
+    final_reason = reason or permission.get_exc_message()
+
     return Failed(
-        reason=reason or permission.get_exc_message(),
+        reason=final_reason,
         status_code=permission.get_exc_status_code(),
         code=permission.get_exc_code(),
         headers=permission.get_exc_headers(),
+        source=Source(trace_name(permission), "failed", final_reason),
     )
+
+
+def trace_name(permission: Permission, /) -> str:
+    return permission.__trace_name__ or type(permission).__name__
+
+
+def outcome_of(result: CheckResult, /) -> Outcome:
+    if is_successful(result):
+        return "success"
+
+    return "skipped" if is_skipped(result) else "failed"
+
+
+def source_of(permission: Permission, result: CheckResult, /) -> Source:
+    match result:
+        case Failed(source=Source() as source) | Skipped(source=Source() as source):
+            return source
+        case _:
+            return Source(trace_name(permission), outcome_of(result), get_reason(result))
+
+
+def with_source[TResult: CheckResult](result: TResult, source: Source, /) -> TResult:
+    if isinstance(result, Failed | Skipped):
+        return replace(result, source=source)
+
+    return result
 
 
 __all__ = [
@@ -116,6 +180,7 @@ __all__ = [
     "PermissionCheckFailed",
     "SkipPermissionCheck",
     "Skipped",
+    "Source",
     "as_failed",
     "call_permissions_check",
     "fail",
@@ -123,7 +188,11 @@ __all__ = [
     "is_failed",
     "is_skipped",
     "is_successful",
+    "outcome_of",
     "skip",
+    "source_of",
     "to_failed",
     "to_skipped",
+    "trace_name",
+    "with_source",
 ]

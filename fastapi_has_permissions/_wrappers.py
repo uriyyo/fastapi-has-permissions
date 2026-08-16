@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, ClassVar, final
 
 from ._permissions import Permission, PermissionWrapper
 from ._resolvers import lazy_check_permission
@@ -9,12 +9,18 @@ from ._results import (
     CheckResult,
     Failed,
     Skipped,
+    Source,
     as_failed,
     get_reason,
     is_failed,
     is_skipped,
     is_successful,
+    outcome_of,
+    source_of,
     to_failed,
+    to_skipped,
+    trace_name,
+    with_source,
 )
 from .types import Exceptions
 
@@ -28,6 +34,8 @@ if TYPE_CHECKING:
 class WhenPermission(PermissionWrapper):
     guard: Permission
 
+    __trace_name__: ClassVar[str] = "When"
+
     def __sub_permissions__(self) -> Iterable[Permission]:
         return (self.guard, self.permission)
 
@@ -37,7 +45,12 @@ class WhenPermission(PermissionWrapper):
         if is_successful(guard):
             return await lazy_check_permission(self.permission)
 
-        return Skipped(reason=get_reason(guard))
+        reason = get_reason(guard)
+
+        return with_source(
+            Skipped(reason=reason),
+            Source(trace_name(self), "skipped", reason, children=(source_of(self.guard, guard),)),
+        )
 
 
 def When(guard: Permission, permission: Permission, /) -> WhenPermission:  # noqa: N802
@@ -52,7 +65,19 @@ class Undocumented(PermissionWrapper):
 
 class ResultMapper(PermissionWrapper):
     async def check_permissions(self) -> CheckResult:
-        return self.__map_result__(await lazy_check_permission(self.permission))
+        result = await lazy_check_permission(self.permission)
+        mapped = self.__map_result__(result)
+
+        # the mapper rewrote the outcome, so the trace has to say so - and keep what it rewrote
+        return with_source(
+            mapped,
+            Source(
+                trace_name(self),
+                outcome_of(mapped),
+                get_reason(mapped),
+                children=(source_of(self.permission, result),),
+            ),
+        )
 
     @abstractmethod
     def __map_result__(self, result: CheckResult, /) -> CheckResult:
@@ -122,7 +147,7 @@ class ExcHandler(PermissionWrapper):
 class SkipOnExc(ExcHandler):
     def __on_exc__(self, exc: BaseException, /) -> CheckResult:
         # a skip reason never reaches the client, so it is safe to keep the exception here
-        return Skipped(reason=repr(exc))
+        return to_skipped(self, repr(exc))
 
 
 @final
