@@ -24,12 +24,9 @@ app/
 Define base permissions tied to your authentication system:
 
 ```python
-from dataclasses import field
-
 from fastapi.exceptions import RequestValidationError
 
-from fastapi_has_permissions import LazyPermission, Permission, PermissionWrapper, WithError
-from fastapi_has_permissions.types import Exceptions
+from fastapi_has_permissions import Permission, PermissionWrapper, SkipOnExc, WithError
 
 from app.auth.dependencies import get_current_user, User
 
@@ -66,9 +63,9 @@ class IsPrivilegedUser(PermissionWrapper):
     permission: Permission = IsAdmin() | HasServiceToken()
 
 
-# Base class for lazy permissions that skip on validation errors
-class GracefulLazyPermission(LazyPermission):
-    skip_on_exc: Exceptions = field(default=(RequestValidationError,), kw_only=True)
+# Abstain instead of failing when a resource dependency cannot be resolved
+def graceful(permission: Permission) -> Permission:
+    return SkipOnExc(permission, (RequestValidationError,))
 
 
 # Reusable policy: this subtree answers 404 instead of admitting the resource exists
@@ -91,13 +88,13 @@ from uuid import UUID
 
 from fastapi import Depends, Path
 
-from fastapi_has_permissions import LazyPermission
+from fastapi_has_permissions import Permission
 from fastapi_has_permissions.types import Dep
 
 from app.db import AsyncSessionDep
 from app.models import Article
 
-from .common import CurrentUserDep, GracefulLazyPermission
+from .common import CurrentUserDep
 
 
 async def get_current_article(
@@ -110,12 +107,12 @@ async def get_current_article(
 ArticleDep = Annotated[Article, Depends(get_current_article)]
 
 
-class IsArticleAuthor(GracefulLazyPermission, LazyPermission):
+class IsArticleAuthor(Permission):
     async def check_permissions(self, user: CurrentUserDep, article: ArticleDep) -> bool:
         return article.created_by == user.email
 
 
-class BelongsToSameWorkspace(GracefulLazyPermission):
+class BelongsToSameWorkspace(Permission):
     resource_dep: Dep
 
     async def check_permissions(self, resource: Any, /, user: CurrentUserDep) -> bool:
@@ -189,18 +186,23 @@ router.include_router(admin_router)
 
 ## Pattern 4: Complex Composed Permissions
 
-Use boolean operators and lazy permissions for resource-level access control:
+Use boolean operators for resource-level access control, wrapping the checks whose resource
+may not load:
 
 ```python
 from fastapi import APIRouter, Depends
 
-from app.permissions.common import IsPrivilegedUser, IsEditor
+from app.permissions.common import IsPrivilegedUser, IsEditor, graceful
 from app.permissions.articles import IsArticleAuthor, BelongsToSameWorkspace, ArticleDep
 
 router = APIRouter(
     prefix="/articles",
     dependencies=[
-        Depends(IsPrivilegedUser() | IsArticleAuthor() | (IsEditor() & BelongsToSameWorkspace(ArticleDep))),
+        Depends(
+            IsPrivilegedUser()
+            | graceful(IsArticleAuthor())
+            | (IsEditor() & graceful(BelongsToSameWorkspace(ArticleDep)))
+        ),
     ],
 )
 ```
@@ -211,9 +213,10 @@ This means access is granted if:
 2. **`IsArticleAuthor()`** -- user is the author of the article, **OR**
 3. **`IsEditor() & BelongsToSameWorkspace(ArticleDep)`** -- user is an editor and the article belongs to their workspace
 
-On list endpoints (`GET /articles`), the lazy permissions (`IsArticleAuthor`, `BelongsToSameWorkspace`) are
-skipped because the `article_id` path parameter doesn't exist. Only `IsPrivilegedUser()` and `IsEditor()`
-are evaluated.
+On list endpoints (`GET /articles`), the wrapped checks (`IsArticleAuthor`, `BelongsToSameWorkspace`)
+abstain because the `article_id` path parameter doesn't exist. Only `IsPrivilegedUser()` and
+`IsEditor()` are evaluated -- and because `|` short-circuits, a privileged user never pays to load
+the article at all.
 
 !!! warning
 

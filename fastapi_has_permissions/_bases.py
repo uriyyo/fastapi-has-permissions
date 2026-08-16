@@ -1,18 +1,6 @@
-import inspect
-from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, dataclass_transform
-
-
-@dataclass
-class SignatureOverride(ABC):
-    def __post_init__(self) -> None:
-        self.__signature__ = self.__get_signature__()
-
-    @abstractmethod
-    def __get_signature__(self) -> inspect.Signature:
-        pass
 
 
 def _hash_with_fallback(original_hash_func: Callable[[Any], int]) -> Callable[[Any], int]:
@@ -53,5 +41,4 @@ class ForceDataclass:
 
 __all__ = [
     "ForceDataclass",
-    "SignatureOverride",
 ]

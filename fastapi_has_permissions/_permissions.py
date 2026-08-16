@@ -3,27 +3,17 @@ from __future__ import annotations
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sequence
-from dataclasses import field, fields
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, final
+from dataclasses import field
+from typing import TYPE_CHECKING, Any, ClassVar, final
 
 from fastapi import Depends
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi_injected import is_dep
 
-from ._bases import ForceDataclass, SignatureOverride
-from ._deps_args import (
-    get_dep_arg_name,
-    get_signature_with_deps,
-    remap_deps_args,
-    signature_with_params,
-)
+from ._bases import ForceDataclass
+from ._deps_args import get_signature_with_deps
 from ._errors import HTTPExcRaiser
-from ._resolvers import (
-    PermissionResolver,
-    Resolvable,
-    ResolvedPermission,
-    lazy_check_permission,
-)
+from ._resolvers import PermissionResolver, lazy_check_permission
 from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, is_successful
 from .types import AsyncFunc, Dep
 
@@ -46,48 +36,32 @@ class Permission(
     ForceDataclass,
     BasePermission,
     HTTPExcRaiser,
-    Resolvable,
-    SignatureOverride,
     ABC,
 ):
     auto_error: bool = field(default=True, kw_only=True)
 
-    def __deps__(self) -> Iterable[Dep]:
-        for dfield in fields(self):
-            if is_dep(dfield.type):
-                yield getattr(self, dfield.name)
+    def __post_init__(self) -> None:
+        pass
 
-    def __get_signature__(self) -> inspect.Signature:
-        return signature_with_params([self.__to_sign_param__()])
+    def __deps__(self) -> Iterable[Dep]:
+        for param in get_typed_signature(type(self)).parameters.values():
+            if is_dep(param.annotation):
+                yield getattr(self, param.name)
 
     def __check_signature__(self) -> inspect.Signature:
         return get_signature_with_deps(self.check_permissions, [*self.__deps__()])
 
-    def __to_sign_param__(self, idx: int = 0, /) -> inspect.Parameter:
-        return inspect.Parameter(
-            name=get_dep_arg_name(idx),
-            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=Annotated[
-                PermissionResolver,
-                self.__resolver_to_depends__(self.__to_resolver__()),
-            ],
-        )
-
-    def __to_resolver__(self) -> PermissionResolver:
-        return PermissionResolver(permission=self)
-
     def __resolver_to_depends__(self, resolver: PermissionResolver) -> Any:
         return Depends(resolver)
 
-    @remap_deps_args
-    async def __call__(self, permission: ResolvedPermission) -> CheckResult:
+    async def __call__(self) -> CheckResult:
         message: str | None = None
         status_code: int | None = None
         code: str | None = None
         headers: dict[str, str] | None = None
         result: bool
 
-        match ret := await permission.check_permissions():
+        match ret := await lazy_check_permission(self):
             case Failed(reason=reason, status_code=status_code, code=code, headers=headers):
                 message = reason
                 result = False
@@ -126,9 +100,6 @@ class Permission(
 class _AllAnyPermissions(Permission):
     permissions: Sequence[Permission]
 
-    def __check_signature__(self) -> inspect.Signature:
-        return get_typed_signature(self.check_permissions)
-
 
 def _flatten(permission: Permission, cls: type[_AllAnyPermissions]) -> list[Permission]:
     # only absorb a same-kind composite that carries no error config of its own,
@@ -152,11 +123,8 @@ class _SinglePermission(Permission):
 
 
 class PermissionWrapper(_SinglePermission):
-    def __check_signature__(self) -> inspect.Signature:
-        return signature_with_params([self.permission.__to_sign_param__()])
-
-    async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
-        return await permission.check_permissions()
+    async def check_permissions(self) -> CheckResult:
+        return await lazy_check_permission(self.permission)
 
 
 @final
@@ -226,9 +194,6 @@ class AllPermissions(_AllAnyPermissions):
 @final
 class NotPermission(_SinglePermission):
     default_exc_message: ClassVar[str] = "The permission was satisfied, but it should not have been"
-
-    def __check_signature__(self) -> inspect.Signature:
-        return get_typed_signature(self.check_permissions)
 
     async def check_permissions(self) -> CheckResult:
         result = await lazy_check_permission(self.permission)

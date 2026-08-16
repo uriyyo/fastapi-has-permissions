@@ -16,9 +16,6 @@ type Resource[R] = Callable[..., DepReturn[R]] | Dep[R]
 
 _TAny = TypeVar("_TAny", default=Any)
 
-Args: TypeAlias = tuple[_TAny, ...]
-Kwargs: TypeAlias = dict[str, _TAny]
-
 type Deps = Sequence[Dep[Any]]
 
 Func: TypeAlias = Callable[..., _TAny]
@@ -27,13 +24,11 @@ AsyncFunc: TypeAlias = Callable[..., Coroutine[Any, Any, _TAny]]
 type Exceptions = tuple[type[BaseException], ...]
 
 __all__ = [
-    "Args",
     "AsyncFunc",
     "Dep",
     "DepFactory",
     "Deps",
     "Exceptions",
     "Func",
-    "Kwargs",
     "Resource",
 ]

@@ -12,14 +12,12 @@ from fastapi_has_permissions import (
     DenySkipped,
     Dep,
     FailOnExc,
-    LazyPermission,
     Permission,
     PermissionWrapper,
     SkipOnExc,
     WithError,
     add_permissions,
     fail,
-    lazy,
     permission,
     skip,
 )
@@ -57,13 +55,6 @@ async def act(behaviour: Behaviour) -> bool:
 
 
 class Simple(Permission):
-    behaviour: Behaviour
-
-    async def check_permissions(self) -> bool:
-        return await act(self.behaviour)
-
-
-class SimpleLazy(LazyPermission):
     behaviour: Behaviour
 
     async def check_permissions(self) -> bool:
@@ -116,8 +107,6 @@ KINDS: dict[str, Callable[[Behaviour], Permission]] = {
     "class-based": Simple,
     "function-based": func_based,
     "with-dep-field": lambda behaviour: UsesDep(behaviour, Depends(value_dep)),
-    "lazy-wrapped": lambda behaviour: lazy(Simple(behaviour)),
-    "lazy-subclass": SimpleLazy,
     "named-wrapper": lambda behaviour: NamedWrapper(Simple(behaviour)),
     "and-composite": lambda behaviour: Simple(behaviour) & Simple(behaviour),
     "or-composite": lambda behaviour: Simple(behaviour) | Simple(behaviour),
@@ -293,10 +282,3 @@ def test_wrappers_nested_in_a_composition(endpoint, expected_status, expected_de
 
     if expected_detail is not None:
         assert response.json()["detail"] == expected_detail
-
-
-def test_wrapper_keeps_openapi_parameters() -> None:
-    paths = app.openapi()["paths"]
-
-    assert paths["/wrapped-header"]["get"]["parameters"] == paths["/plain-header"]["get"]["parameters"]
-    assert [param["name"] for param in paths["/wrapped-header"]["get"]["parameters"]] == ["x-token"]

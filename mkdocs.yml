@@ -55,7 +55,7 @@ nav:
           - "Auto Error": learn/tutorial/auto_error.md
           - "Skip & Fail Helpers": learn/tutorial/skip_and_fail.md
           - "Permission Wrappers": learn/tutorial/wrappers.md
-          - "Lazy Permissions": learn/tutorial/lazy_permissions.md
+          - "Deferred Resolution": learn/tutorial/deferred_resolution.md
           - "The Dep Type": learn/tutorial/dep_type.md
           - "Policies": learn/tutorial/policies.md
       - "Built-in Permissions":

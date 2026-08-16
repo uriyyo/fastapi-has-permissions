@@ -1,5 +1,4 @@
 import inspect
-from collections.abc import Iterable
 from functools import wraps
 from itertools import count, takewhile
 from typing import Annotated, Any, cast
@@ -42,10 +41,6 @@ def get_signature_with_deps(func: Func, deps: Deps) -> inspect.Signature:
     )
 
 
-def signature_with_params(params: Iterable[inspect.Parameter]) -> inspect.Signature:
-    return inspect.Signature(parameters=[*params])
-
-
 def remap_deps_args[TAsyncFunc: AsyncFunc](func: TAsyncFunc) -> TAsyncFunc:
     @wraps(func)
     async def wrapper(self: Any, **kwargs: Any) -> Any:
@@ -62,5 +57,4 @@ __all__ = [
     "get_dep_arg_name",
     "get_signature_with_deps",
     "remap_deps_args",
-    "signature_with_params",
 ]

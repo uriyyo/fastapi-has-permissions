@@ -1,13 +1,14 @@
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from typing import Annotated
 
 import pytest
-from fastapi import Depends, FastAPI, Header, Path
+from fastapi import Depends, FastAPI, Header, Path, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import AllowSkipped, Permission, add_permissions, lazy
+from fastapi_has_permissions import AllowSkipped, Permission, SkipOnExc, add_permissions, evaluate
+from fastapi_has_permissions.common import Allow
 
 app = FastAPI()
 add_permissions(app)
@@ -24,13 +25,13 @@ class AgeIsMoreThan(Permission):
 @app.get(
     "/age-restricted-endpoint",
     dependencies=[
-        Depends(AllowSkipped(lazy(AgeIsMoreThan(age=18), skip_on_exc=(RequestValidationError,)))),
+        Depends(AllowSkipped(SkipOnExc(AgeIsMoreThan(age=18), (RequestValidationError,)))),
     ],
 )
 @app.get(
     "/strict-age-restricted-endpoint",
     dependencies=[
-        Depends(lazy(AgeIsMoreThan(age=18), skip_on_exc=(RequestValidationError,))),
+        Depends(SkipOnExc(AgeIsMoreThan(age=18), (RequestValidationError,))),
     ],
 )
 async def route() -> str:
@@ -73,21 +74,21 @@ class IsArticleAuthor(Permission):
         return article_id == 1 or staff
 
 
-lazy_app = FastAPI()
-add_permissions(lazy_app)
+article_app = FastAPI()
+add_permissions(article_app)
 
 
-@lazy_app.get("/articles/{article_id}", dependencies=[Depends(lazy(IsArticleAuthor()))])
+@article_app.get("/articles/{article_id}", dependencies=[Depends(IsArticleAuthor())])
 async def article(article_id: int) -> str:
     return f"You have access to article {article_id}!"
 
 
 @pytest.fixture
-def lazy_client() -> Iterator[TestClient]:
-    with TestClient(lazy_app) as client:
+def article_client() -> Iterator[TestClient]:
+    with TestClient(article_app) as client:
         yield client
 
-    lazy_app.dependency_overrides.clear()
+    article_app.dependency_overrides.clear()
 
 
 @pytest.mark.parametrize(
@@ -97,8 +98,8 @@ def lazy_client() -> Iterator[TestClient]:
         pytest.param("/articles/2", 403, id="not-author"),
     ],
 )
-def test_lazy_resolves_path_params(endpoint, expected_status, lazy_client) -> None:
-    response = lazy_client.get(endpoint)
+def test_path_params_are_resolved(endpoint, expected_status, article_client) -> None:
+    response = article_client.get(endpoint)
 
     assert response.status_code == expected_status
 
@@ -110,15 +111,15 @@ def test_lazy_resolves_path_params(endpoint, expected_status, lazy_client) -> No
         pytest.param(False, 403, id="not-staff"),
     ],
 )
-def test_lazy_respects_dependency_overrides(staff, expected_status, lazy_client) -> None:
-    lazy_app.dependency_overrides[is_staff] = lambda: staff
+def test_dependency_overrides_are_respected(staff, expected_status, article_client) -> None:
+    article_app.dependency_overrides[is_staff] = lambda: staff
 
-    response = lazy_client.get("/articles/2")
+    response = article_client.get("/articles/2")
 
     assert response.status_code == expected_status
 
 
-def test_lazy_shares_dependency_cache_with_route() -> None:
+def test_dependency_cache_is_shared_with_the_route() -> None:
     calls = 0
 
     async def counted() -> int:
@@ -133,14 +134,13 @@ def test_lazy_shares_dependency_cache_with_route() -> None:
     cache_app = FastAPI()
     add_permissions(cache_app)
 
-    @cache_app.get("/cached", dependencies=[Depends(lazy(UsesCounted()))])
+    @cache_app.get("/cached", dependencies=[Depends(UsesCounted())])
     async def cached(value: Annotated[int, Depends(counted)]) -> int:
         return value
 
     with TestClient(cache_app) as client:
         assert client.get("/cached").is_success
 
-    # the route and the lazy permission must share a single resolution per request
     assert calls == 1
 
 
@@ -159,14 +159,52 @@ add_permissions(error_app)
 
 @error_app.get(
     "/error",
-    dependencies=[Depends(lazy(UsesFailingDep(), skip_on_exc=(RequestValidationError,)))],
+    dependencies=[Depends(SkipOnExc(UsesFailingDep(), (RequestValidationError,)))],
 )
 async def error_route() -> str:
     return "You have access to this endpoint!"
 
 
-def test_lazy_does_not_swallow_unrelated_value_errors() -> None:
-    # a ValueError raised by a dependency must not be mistaken for a validation
-    # error and silently turned into a skipped check
+def test_unrelated_value_errors_are_not_swallowed() -> None:
     with TestClient(error_app, raise_server_exceptions=True) as client, pytest.raises(ValueError, match="boom"):
         client.get("/error")
+
+
+@pytest.mark.asyncio
+async def test_yield_dependencies_stay_open_for_the_check() -> None:
+    events: list[str] = []
+
+    async def managed() -> AsyncIterator[str]:
+        events.append("open")
+        try:
+            yield "resource"
+        finally:
+            events.append("close")
+
+    class UsesManaged(Permission):
+        async def check_permissions(self, resource: Annotated[str, Depends(managed)]) -> bool:
+            events.append(f"check saw {resource!r}")
+            return True
+
+    await evaluate(UsesManaged())
+
+    assert events == ["open", "check saw 'resource'", "close"]
+
+
+class TestNestedDeferral:
+    @pytest.fixture
+    def nested_client(self) -> Iterator[TestClient]:
+        nested_app = FastAPI()
+        add_permissions(nested_app)
+
+        guarded = SkipOnExc(UsesFailingDep(), (ValueError,))
+
+        @nested_app.get("/nested", dependencies=[Depends(AllowSkipped(guarded & Allow()))])
+        async def nested() -> str:
+            return "ok"
+
+        with TestClient(nested_app, raise_server_exceptions=True) as client:
+            yield client
+
+    def test_exceptions_from_a_nested_dependency_are_caught(self, nested_client: TestClient) -> None:
+        assert nested_client.get("/nested").status_code == status.HTTP_200_OK

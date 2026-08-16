@@ -20,7 +20,6 @@ from fastapi_has_permissions import (
     evaluate,
     fail,
     is_failed,
-    lazy,
     skip,
 )
 from fastapi_has_permissions.common import HasScope, IsAuthenticated
@@ -168,12 +167,12 @@ add_permissions(app)
     ],
 )
 @app.get(
-    "/lazy-and-exc",
+    "/skip-and-exc",
     dependencies=[
         Depends(
             AllowSkipped(
                 FailOnExc(
-                    lazy(AgeIsMoreThan(age=18), skip_on_exc=(RequestValidationError,)),
+                    SkipOnExc(AgeIsMoreThan(age=18), (RequestValidationError,)),
                     (BackendError,),
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 ),
@@ -324,32 +323,32 @@ def app_client() -> Iterator[TestClient]:
             id="with-error-applies-inside-a-composition",
         ),
         pytest.param(
-            "/lazy-and-exc",
+            "/skip-and-exc",
             {"age": "20"},
             status.HTTP_200_OK,
             None,
-            id="lazy-and-exc-check-passes",
+            id="skip-and-exc-check-passes",
         ),
         pytest.param(
-            "/lazy-and-exc",
+            "/skip-and-exc",
             {"age": "17"},
             status.HTTP_403_FORBIDDEN,
             None,
-            id="lazy-and-exc-check-denies",
+            id="skip-and-exc-check-denies",
         ),
         pytest.param(
-            "/lazy-and-exc",
+            "/skip-and-exc",
             {"age": "0"},
             status.HTTP_503_SERVICE_UNAVAILABLE,
             None,
-            id="lazy-and-exc-check-raises",
+            id="skip-and-exc-check-raises",
         ),
         pytest.param(
-            "/lazy-and-exc",
+            "/skip-and-exc",
             {},
             status.HTTP_200_OK,
             None,
-            id="lazy-and-exc-dependency-cannot-be-resolved",
+            id="skip-and-exc-dependency-cannot-be-resolved",
         ),
         pytest.param(
             "/authenticated",

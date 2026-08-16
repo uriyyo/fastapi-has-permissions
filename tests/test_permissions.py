@@ -3,11 +3,20 @@ from dataclasses import dataclass
 from typing import Annotated
 
 import pytest
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Header, Request, status
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import AllPermissions, AnyPermissions, CheckResult, Permission, add_permissions
+from fastapi_has_permissions import (
+    AllPermissions,
+    AnyPermissions,
+    CheckResult,
+    DepFactory,
+    Permission,
+    add_permissions,
+)
 from fastapi_has_permissions.common import no_auto_error
+
+from .future_annotations_perms import HasRoleFutureAnnotations
 
 app = FastAPI()
 add_permissions(app)
@@ -290,3 +299,40 @@ def test_dataclass_kwargs_are_applied() -> None:
             return True
 
     assert Ordered(1) < Ordered(2)
+
+
+class TestFutureAnnotations:
+    @pytest.fixture
+    def future_client(self) -> Iterator[TestClient]:
+        async def get_role(role: Annotated[str, Header()] = "guest") -> str:
+            return role
+
+        future_app = FastAPI()
+        add_permissions(future_app)
+
+        permission = HasRoleFutureAnnotations(DepFactory[str, get_role])
+
+        @future_app.get("/future", dependencies=[Depends(permission)])
+        async def route() -> str:
+            return "ok"
+
+        with TestClient(future_app) as client:
+            yield client
+
+    def test_dep_field_is_recognized(self) -> None:
+        async def get_role() -> str:
+            return "admin"
+
+        permission = HasRoleFutureAnnotations(DepFactory[str, get_role])
+
+        assert len([*permission.__deps__()]) == 1
+
+    @pytest.mark.parametrize(
+        ("role", "expected_status"),
+        [
+            pytest.param("admin", status.HTTP_200_OK, id="allowed"),
+            pytest.param("guest", status.HTTP_403_FORBIDDEN, id="denied"),
+        ],
+    )
+    def test_permission_is_enforced(self, future_client: TestClient, role: str, expected_status: int) -> None:
+        assert future_client.get("/future", headers={"role": role}).status_code == expected_status

@@ -244,12 +244,8 @@ instance is what FastAPI resolves.
 
 ### Permission parameters do not appear in OpenAPI
 
-A policy resolves its actions through the inject scope rather than declaring them as
-sub-dependencies. Checks are still enforced, but a header a permission requires will not be
-documented in the schema, and generated clients will not know to send it.
-
-### `from __future__ import annotations`
-
-Do not use it in a module that defines permissions. It turns annotations into strings, and
-`Dep` fields are recognised by their annotation -- with it, they stop being detected as
-dependencies at all. This applies to permissions generally, not just to policies.
+Permissions resolve their dependencies at check time rather than declaring them as
+sub-dependencies -- that is what lets a check be skipped without paying for it. Checks are
+still enforced, but a header a permission requires will not be documented in the schema, and
+generated clients will not know to send it. This applies to permissions generally, not just to
+policies; see [Deferred Resolution](deferred_resolution.md).

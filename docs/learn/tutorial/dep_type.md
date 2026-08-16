@@ -121,33 +121,29 @@ class BothInSameWorkspace(Permission):
         return source.workspace_id == target.workspace_id
 ```
 
-## Combining with Lazy Permissions
+## Dependencies That May Not Resolve
 
-`Dep` fields work with lazy permissions. This is useful when the dependency might not be resolvable
-on all routes:
+A `Dep` field is resolved at check time, so a route where it cannot be resolved does not have to
+fail -- wrap the permission to abstain instead:
 
 ```python
-from dataclasses import field
-
 from fastapi.exceptions import RequestValidationError
 
-from fastapi_has_permissions import Dep, LazyPermission
-from fastapi_has_permissions.types import Exceptions
+from fastapi_has_permissions import Dep, Permission, SkipOnExc
 
 
-class GracefulLazyPermission(LazyPermission):
-    skip_on_exc: Exceptions = field(default=(RequestValidationError,), kw_only=True)
-
-
-class BelongsToSameWorkspace(GracefulLazyPermission):
+class BelongsToSameWorkspace(Permission):
     resource_dep: Dep[HasWorkspaceID]
 
     async def check_permissions(self, resource: HasWorkspaceID, /, current_user: CurrentUserDep) -> bool:
         return resource.workspace_id == current_user.workspace_id
+
+
+graceful = SkipOnExc(BelongsToSameWorkspace(ArticleDep), (RequestValidationError,))
 ```
 
-Now `BelongsToSameWorkspace(ArticleDep)` will skip the check when the dependency can't be resolved
-(e.g., on list endpoints without a path parameter).
+Now the check is skipped when the dependency can't be resolved (e.g., on list endpoints without a
+path parameter). See [Deferred Resolution](deferred_resolution.md).
 
 !!! warning
 

@@ -5,7 +5,7 @@ import pytest
 from fastapi import Depends, FastAPI, Header
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Dep, DepFactory, Permission, add_permissions, lazy, permission
+from fastapi_has_permissions import AllowSkipped, Dep, DepFactory, Permission, add_permissions, permission
 
 
 async def get_role(role: Annotated[str, Header()]) -> str:
@@ -37,8 +37,8 @@ async def class_based() -> str:
     return "ok"
 
 
-@app.get("/lazy", dependencies=[Depends(lazy(HasRole(RoleDep, "admin")))])
-async def lazy_based() -> str:
+@app.get("/wrapped", dependencies=[Depends(AllowSkipped(HasRole(RoleDep, "admin")))])
+async def wrapped() -> str:
     return "ok"
 
 
@@ -53,7 +53,7 @@ def app_client() -> Iterator[TestClient]:
         yield client
 
 
-@pytest.mark.parametrize("endpoint", ["/class-based", "/lazy", "/function-based"])
+@pytest.mark.parametrize("endpoint", ["/class-based", "/wrapped", "/function-based"])
 @pytest.mark.parametrize(
     ("role", "expected_status"),
     [

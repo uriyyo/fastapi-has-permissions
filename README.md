@@ -26,7 +26,7 @@ pip install fastapi-has-permissions
 ### Setup
 
 Call `add_permissions()` on your app — it binds an inject scope to every request, which
-is what lets `|`, `~`, `lazy()` and `Evaluate` resolve their dependencies at check time:
+is what lets permissions and `Evaluate` resolve their dependencies at check time:
 
 ```python
 from fastapi import FastAPI
@@ -92,11 +92,11 @@ Depends(HasAuthorizationHeader() | HasRole("admin"))
 Depends(~HasAuthorizationHeader())
 ```
 
-`|` and `~` are **lazy**: each branch's dependencies are resolved at request time,
-one branch at a time, and evaluation short-circuits at the first permission that
-passes — a failing or expensive dependency in a losing branch is never resolved.
-`&` resolves its dependencies eagerly (they all need to pass anyway), which keeps
-them visible in the OpenAPI schema.
+All three operators are **lazy**: each branch's dependencies are resolved at request
+time, one branch at a time, and evaluation short-circuits as soon as the outcome is
+decided — a failing or expensive dependency in a losing branch is never resolved.
+The trade-off is that a permission's dependencies are not declared as route
+dependencies, so they do not appear in the OpenAPI schema.
 
 When a composed check fails, the failing permission's message, status code, error
 code, and headers are propagated: `&` reports the first failing permission, and `|`
@@ -183,19 +183,22 @@ async def admin_endpoint():
 
 Function-based permissions support the same `&`, `|`, `~` composition.
 
-### Lazy Permissions
+### Deferred Resolution
 
-Defer dependency resolution to request time with `lazy()` - useful when dependencies
-may not always be available:
+Every permission resolves its dependencies at check time, so a dependency is only paid
+for if its permission is actually reached. When a dependency may not resolve at all, wrap
+the permission to decide what that means:
 
 ```python
 from fastapi.exceptions import RequestValidationError
 
-from fastapi_has_permissions import lazy
+from fastapi_has_permissions import SkipOnExc
 
 # Skip the check instead of failing if the "age" header is missing
-Depends(lazy(AgeIsMoreThan(age=18), skip_on_exc=(RequestValidationError,)))
+Depends(SkipOnExc(AgeIsMoreThan(age=18), (RequestValidationError,)))
 ```
+
+This works at any depth -- inside a composition, or nested in another wrapper.
 
 ### Imperative Checks
 
@@ -331,5 +334,5 @@ async def publish(post: Annotated[Post, Requires(PostPolicy(), PostPolicy.publis
   checks and injects the loaded object for object-level permissions
 - **Full FastAPI DI support** -- `check_permissions()` accepts any FastAPI-injectable parameters
 - **Built on [fastapi-injected](https://github.com/uriyyo/fastapi-injected)** -- `Dep` / `DepFactory` are
-  re-exported from it, and lazy permissions resolve through its inject scope, so they share the request's
+  re-exported from it, and permissions resolve through its inject scope, so they share the request's
   dependency cache with the route

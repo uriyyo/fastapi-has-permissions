@@ -82,8 +82,16 @@ async def read_write():
 
 ## OAuth2 Security Integration
 
-`HasScope` integrates with FastAPI's `Security` system. Internally, it uses `Security(resolver, scopes=...)`
-instead of `Depends(resolver)`, which means the required scopes appear in the OpenAPI documentation.
+`HasScope` integrates with FastAPI's `Security` system. Internally it wires itself in with
+`Security(resolver, scopes=...)` instead of `Depends(resolver)`, which is what populates the
+`security_scopes` argument its check reads.
+
+!!! note
+
+    The scopes do **not** reach the OpenAPI schema. A permission resolves its dependencies at
+    check time rather than declaring them on the route, so nothing about it is visible to schema
+    generation -- see [Deferred Resolution](../tutorial/deferred_resolution.md). Declare
+    `Security(...)` on the route itself if you need the scopes documented.
 
 ## How `check_permissions` Works
 

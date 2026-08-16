@@ -4,15 +4,14 @@ from abc import abstractmethod
 from typing import final
 
 from ._permissions import PermissionWrapper
-from ._resolvers import ResolvedPermission
+from ._resolvers import lazy_check_permission
 from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, to_failed
 from .types import Exceptions
 
 
 class ResultMapper(PermissionWrapper):
-    async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
-        result = await permission.check_permissions()
-        return self.__map_result__(result)
+    async def check_permissions(self) -> CheckResult:
+        return self.__map_result__(await lazy_check_permission(self.permission))
 
     @abstractmethod
     def __map_result__(self, result: CheckResult, /) -> CheckResult:
@@ -65,9 +64,11 @@ class WithError(ResultMapper):
 class ExcHandler(PermissionWrapper):
     exceptions: Exceptions
 
-    async def check_permissions(self, permission: ResolvedPermission) -> CheckResult:
+    async def check_permissions(self) -> CheckResult:
+        # covers the wrapped permission's *dependency resolution* as well as its check,
+        # so a dependency that raises is caught at any depth
         try:
-            return await permission.check_permissions()
+            return await lazy_check_permission(self.permission)
         except self.exceptions as exc:
             return self.__on_exc__(exc)
 

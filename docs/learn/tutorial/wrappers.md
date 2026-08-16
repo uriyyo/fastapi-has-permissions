@@ -130,12 +130,13 @@ Exceptions that are not listed are re-raised as usual.
 
 !!! note
 
-    Both wrappers only cover exceptions raised by `check_permissions` itself -- dependencies are
-    resolved before the wrapper runs. Use [`lazy(..., skip_on_exc=...)`](lazy_permissions.md) for a
-    dependency that cannot be resolved, and combine the two when you need both:
+    Both wrappers cover the whole check -- resolving the wrapped permission's dependencies as
+    well as running `check_permissions`. See
+    [Deferred Resolution](deferred_resolution.md) for the dependency-cannot-be-resolved case.
+    Nest them when the two failures should mean different things:
 
     ```python
-    Depends(FailOnExc(lazy(HasEntitlement(), skip_on_exc=(RequestValidationError,)), (RedisError,)))
+    Depends(FailOnExc(SkipOnExc(HasEntitlement(), (RequestValidationError,)), (RedisError,)))
     ```
 
 ## Custom Wrappers
