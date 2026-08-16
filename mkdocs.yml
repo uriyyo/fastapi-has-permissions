@@ -53,6 +53,7 @@ nav:
           - "Boolean Composition": learn/tutorial/boolean_composition.md
           - "Custom Error Responses": learn/tutorial/custom_errors.md
           - "Permission Results": learn/tutorial/eval.md
+          - "Evaluating Imperatively": learn/tutorial/evaluating.md
           - "Skip & Fail Helpers": learn/tutorial/skip_and_fail.md
           - "Permission Wrappers": learn/tutorial/wrappers.md
           - "Deferred Resolution": learn/tutorial/deferred_resolution.md

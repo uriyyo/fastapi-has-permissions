@@ -11,6 +11,7 @@ from fastapi_has_permissions import (
 
 from .deps import (
     Allow,
+    Doc,
     IsAdmin,
     RoleDep,
     TypeOf,
@@ -51,3 +52,27 @@ static_assert(is_equivalent_to(Eval[bool, Allow()], bool))
 async def _evaluates_in_a_route(result: Eval[CheckResult, Allow()]) -> None:
     if is_successful(result):
         static_assert(is_equivalent_to(TypeOf[result], Literal[True]))
+
+
+# the module-level `evaluate` is an evaluator, so it carries the same API as the injected one
+static_assert(is_equivalent_to(TypeOf[evaluate], PermissionEvaluator))
+
+
+async def _scoped() -> None:
+    async with evaluate.scope({RoleDep: "admin"}) as perms:
+        static_assert(is_equivalent_to(TypeOf[perms], PermissionEvaluator))
+        static_assert(is_equivalent_to(TypeOf[await perms.check(Allow())], bool))
+
+    # `filter` keeps the item type of whatever it was given
+    async with evaluate.scope() as perms:
+        static_assert(is_equivalent_to(TypeOf[await perms.filter([Doc()], lambda _: Allow())], list[Doc]))
+        static_assert(is_equivalent_to(TypeOf[await perms.filter(["a"], lambda _: Allow())], list[str]))
+
+
+async def _scope_negatives() -> None:
+    async with evaluate.scope() as perms:
+        # the factory has to produce a permission, not a bool
+        await perms.filter([Doc()], lambda _: True)  # type: ignore[ty:invalid-argument-type]
+        await perms.filter(Doc(), lambda _: Allow())  # type: ignore[ty:invalid-argument-type]
+
+    evaluate.scope(on_failure=lambda _, __: "not an exception")  # type: ignore[ty:invalid-argument-type]

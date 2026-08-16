@@ -46,6 +46,24 @@ class HTTPExcRaiser:
     def has_default_error_config(self) -> bool:
         return self.message is None and self.status_code is None and self.code is None and self.headers is None
 
+    def build_http_exception(
+        self,
+        message: str | None = None,
+        status_code: int | None = None,
+        code: str | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> HTTPException:
+        detail: Any = self.resolve_exc_message(message)
+
+        if final_code := self.resolve_exc_code(code):
+            detail = {"code": final_code, "message": detail}
+
+        return HTTPException(
+            status_code=self.resolve_exc_status_code(status_code),
+            detail=detail,
+            headers=self.resolve_exc_headers(headers),
+        )
+
     def raise_http_exception(
         self,
         message: str | None = None,
@@ -53,16 +71,7 @@ class HTTPExcRaiser:
         code: str | None = None,
         headers: dict[str, str] | None = None,
     ) -> NoReturn:
-        detail: Any = self.resolve_exc_message(message)
-
-        if final_code := self.resolve_exc_code(code):
-            detail = {"code": final_code, "message": detail}
-
-        raise HTTPException(
-            status_code=self.resolve_exc_status_code(status_code),
-            detail=detail,
-            headers=self.resolve_exc_headers(headers),
-        )
+        raise self.build_http_exception(message, status_code, code, headers)
 
 
 __all__ = [

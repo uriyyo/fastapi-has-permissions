@@ -168,13 +168,12 @@ security requirements to the [OpenAPI schema](../real_world/overview.md).
 ## Outside a Request
 
 `Eval` is an annotation, so it belongs on a route. In a service function, a background job or a
-message handler there is no signature to annotate -- use
-[`evaluate()`](deferred_resolution.md) instead, which likewise returns the `CheckResult` rather
-than raising:
+message handler there is no signature to annotate -- use the
+[evaluator](evaluating.md) instead, which likewise returns the result rather than raising:
 
 ```python
-from fastapi_has_permissions import evaluate, is_failed
+from fastapi_has_permissions import evaluate
 
-if is_failed(await evaluate(HasAdminRole())):
+if not await evaluate.check(HasAdminRole()):
     ...
 ```

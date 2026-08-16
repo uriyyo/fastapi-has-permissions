@@ -31,6 +31,15 @@ AsyncFunc: TypeAlias = Callable[..., Coroutine[Any, Any, _TAny]]
 
 type Exceptions = tuple[type[BaseException], ...]
 
+if TYPE_CHECKING:
+    from ._permissions import Permission
+    from ._results import Failed
+
+# how `PermissionEvaluator.require` turns a denial into the caller's own exception type
+type ExceptionFactory = Callable[[Permission, Failed], Exception]
+# builds the permission that decides a single item, used by `PermissionEvaluator.filter`
+type PermissionFactory[T] = Callable[[T], Permission]
+
 
 @runtime_checkable
 class HasLazyDepends(Protocol):
@@ -43,9 +52,11 @@ __all__ = [
     "Dep",
     "DepFactory",
     "Deps",
+    "ExceptionFactory",
     "Exceptions",
     "Func",
     "HasLazyDepends",
+    "PermissionFactory",
     "Resolved",
     "Resource",
 ]
