@@ -5,7 +5,15 @@ import pytest
 from fastapi import Depends, FastAPI, Header
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import AllowSkipped, Dep, DepFactory, Permission, add_permissions, permission
+from fastapi_has_permissions import (
+    AllowSkipped,
+    Dep,
+    DepFactory,
+    Permission,
+    Resolved,
+    add_permissions,
+    permission,
+)
 
 
 async def get_role(role: Annotated[str, Header()]) -> str:
@@ -24,7 +32,7 @@ class HasRole(Permission):
 
 
 @permission
-async def role_is(role_dep: Dep[str], /, expected: Annotated[str, Header()]) -> bool:
+async def role_is(role_dep: Resolved[str], /, expected: Annotated[str, Header()]) -> bool:
     return role_dep == expected
 
 
@@ -69,3 +77,9 @@ def test_dep_factory_fills_dep_slot(endpoint, role, expected_status, app_client)
 
 def test_dep_factory_is_annotated_depends() -> None:
     assert RoleDep == Annotated[str, Depends(get_role)]
+
+
+def test_resolved_is_the_same_marker_as_dep() -> None:
+    # `Resolved` only differs from `Dep` statically - a `Dep` field holds the marker,
+    # a `Resolved` parameter receives what it resolves to
+    assert Resolved[str] == Dep[str]

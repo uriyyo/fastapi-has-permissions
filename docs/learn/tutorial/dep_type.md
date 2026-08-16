@@ -21,6 +21,10 @@ dependency, so FastAPI resolves it on its own.
 - `Dep[str]` -- a dependency that resolves to a `str`
 - `Dep[Any]` -- a dependency with no specific type (equivalent to bare `Dep`)
 
+A `Dep[T]` field holds the marker as a *value*, which is what you fill in at construction time. In a
+[function-based permission](function_based.md) the dependency arrives the other way round -- as the
+already-resolved value -- so its parameters are annotated `Resolved[T]` instead.
+
 ## Example: Shared Workspace Check
 
 Consider a permission that checks whether the current user belongs to the same workspace as a resource.

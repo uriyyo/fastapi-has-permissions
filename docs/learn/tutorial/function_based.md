@@ -91,18 +91,18 @@ In both cases, the result is a **factory** -- call it to create a permission ins
 Depends(my_check())  # call to create the permission instance
 ```
 
-## Dependencies with `Dep`
+## Dependencies with `Resolved`
 
-Function-based permissions can accept `Dep` arguments, similar to class-based permissions with `Dep` fields.
-Declare parameters with `Dep[T]` type annotations -- these must come before any regular parameters in the
-function signature:
+Function-based permissions can accept dependency arguments, similar to class-based permissions with `Dep`
+fields. Declare parameters with `Resolved[T]` type annotations -- these must come before any regular
+parameters in the function signature:
 
 ```python
 from typing import Annotated
 
 from fastapi import Depends, Header
 
-from fastapi_has_permissions import Dep, permission
+from fastapi_has_permissions import Resolved, permission
 
 
 async def get_admin_role() -> str:
@@ -111,11 +111,16 @@ async def get_admin_role() -> str:
 
 @permission
 async def has_role(
-    admin_role: Dep[str],
+    admin_role: Resolved[str],
     role: Annotated[str, Header()],
 ) -> bool:
     return role == admin_role
 ```
+
+`Resolved[T]` is the same marker as `Dep[T]`, in the other position: a `Dep[T]` **field** holds the
+dependency marker itself, while a `Resolved[T]` **parameter** receives the value that marker resolves to.
+Annotating the parameter as `Dep[T]` still works at runtime, but tells a type checker the parameter holds
+a marker rather than a `T`.
 
 When creating the permission instance, pass the dependencies as positional arguments to the factory:
 

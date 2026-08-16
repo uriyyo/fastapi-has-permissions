@@ -159,10 +159,11 @@ async def admin_endpoint():
     return {"message": "Admin access granted"}
 ```
 
-Function-based permissions also support `Dep` arguments for injecting FastAPI dependencies:
+Function-based permissions also support dependency arguments -- annotate them with `Resolved[T]`,
+which declares the *resolved* value the check receives:
 
 ```python
-from fastapi_has_permissions import Dep, DepFactory, permission
+from fastapi_has_permissions import DepFactory, Resolved, permission
 
 
 async def get_admin_role() -> str:
@@ -173,7 +174,7 @@ AdminRoleDep = DepFactory[str, get_admin_role]  # == Annotated[str, Depends(get_
 
 
 @permission
-async def has_role(admin_role: Dep[str], /, role: Annotated[str, Header()]) -> bool:
+async def has_role(admin_role: Resolved[str], /, role: Annotated[str, Header()]) -> bool:
     return role == admin_role
 
 

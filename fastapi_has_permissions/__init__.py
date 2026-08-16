@@ -16,7 +16,7 @@ from ._wrappers import (
     Undocumented,
     WithError,
 )
-from .types import Dep, DepFactory, Resource
+from .types import Dep, DepFactory, Resolved, Resource
 
 __all__ = [
     "Advisory",
@@ -37,6 +37,7 @@ __all__ = [
     "PermissionWrapper",
     "Policy",
     "Requires",
+    "Resolved",
     "Resource",
     "ResultMapper",
     "SkipOnExc",

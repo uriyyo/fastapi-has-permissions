@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, Header, status
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from fastapi_has_permissions import CheckResult, Dep, add_permissions, permission
+from fastapi_has_permissions import CheckResult, Resolved, add_permissions, permission
 
 app = FastAPI()
 add_permissions(app)
@@ -21,7 +21,7 @@ async def get_admin_role() -> str:
 
 
 async def has_role(
-    admin_role: Dep[str],
+    admin_role: Resolved[str],
     role: Annotated[str, Header()],
 ) -> CheckResult:
     return role == admin_role
