@@ -52,6 +52,24 @@ def is_successful(result: CheckResult) -> TypeIs[Literal[True]]:
     return result is True
 
 
+def get_reason(result: CheckResult, /) -> str | None:
+    match result:
+        case Skipped(reason=reason) | Failed(reason=reason):
+            return reason
+        case _:
+            return None
+
+
+def as_failed(result: CheckResult, /, fallback: Failed | None = None) -> Failed:
+    if isinstance(result, Failed):
+        return result
+
+    if fallback is not None:
+        return fallback
+
+    return Failed()
+
+
 def skip(reason: str | None = None) -> NoReturn:
     raise SkipPermissionCheck(reason)
 
@@ -99,8 +117,10 @@ __all__ = [
     "PermissionCheckFailed",
     "SkipPermissionCheck",
     "Skipped",
+    "as_failed",
     "call_permissions_check",
     "fail",
+    "get_reason",
     "is_failed",
     "is_skipped",
     "is_successful",

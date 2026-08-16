@@ -5,7 +5,17 @@ from typing import TYPE_CHECKING, final
 
 from ._permissions import Permission, PermissionWrapper
 from ._resolvers import lazy_check_permission
-from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, is_successful, to_failed
+from ._results import (
+    CheckResult,
+    Failed,
+    Skipped,
+    as_failed,
+    get_reason,
+    is_failed,
+    is_skipped,
+    is_successful,
+    to_failed,
+)
 from .types import Exceptions
 
 if TYPE_CHECKING:
@@ -27,7 +37,7 @@ class WhenPermission(PermissionWrapper):
         if is_successful(guard):
             return await lazy_check_permission(self.permission)
 
-        return Skipped(reason=guard.reason if isinstance(guard, Failed | Skipped) else None)
+        return Skipped(reason=get_reason(guard))
 
 
 def When(guard: Permission, permission: Permission, /) -> WhenPermission:  # noqa: N802
@@ -71,7 +81,7 @@ class DenySkipped(ResultMapper):
 class Advisory(ResultMapper):
     def __map_result__(self, result: CheckResult, /) -> CheckResult:
         if is_failed(result):
-            return Skipped(reason=result.reason if isinstance(result, Failed) else None)
+            return Skipped(reason=get_reason(result))
 
         return result
 
@@ -82,7 +92,7 @@ class WithError(ResultMapper):
         if not is_failed(result):
             return result
 
-        failed = result if isinstance(result, Failed) else Failed()
+        failed = as_failed(result)
 
         return Failed(
             reason=self.resolve_exc_message(failed.reason),

@@ -13,7 +13,16 @@ from ._bases import ForceDataclass
 from ._deps_args import get_signature_with_deps
 from ._errors import ErrorConfig
 from ._resolvers import PermissionResolver, lazy_check_permission
-from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, is_successful
+from ._results import (
+    CheckResult,
+    Failed,
+    Skipped,
+    as_failed,
+    is_failed,
+    is_skipped,
+    is_successful,
+    to_failed,
+)
 from .types import AsyncFunc, Dep
 
 
@@ -65,31 +74,13 @@ class Permission(
         return Depends(resolver)
 
     async def __call__(self) -> CheckResult:
-        message: str | None = None
-        status_code: int | None = None
-        code: str | None = None
-        headers: dict[str, str] | None = None
-        result: bool
+        result = await lazy_check_permission(self)
 
-        match ret := await lazy_check_permission(self):
-            case Failed(reason=reason, status_code=status_code, code=code, headers=headers):
-                message = reason
-                result = False
-            case Skipped():
-                # a skip reaching the top level is an abstention, not an approval - deny it,
-                # wrap the permission into `AllowSkipped` to opt into skip-means-allow
-                message = self.get_exc_message()
-                result = False
-            case False:
-                message = self.get_exc_message()
-                result = False
-            case _:
-                result = True
+        if self.__auto_error__ and not is_successful(result):
+            failed = as_failed(result, to_failed(self))
+            self.raise_error(failed.reason, failed.status_code, failed.code, failed.headers)
 
-        if self.__auto_error__ and not result:
-            self.raise_error(message, status_code, code, headers)
-
-        return ret
+        return result
 
     def __and__(self, other: Permission) -> Permission:
         if not isinstance(other, Permission):
@@ -159,11 +150,7 @@ class AnyPermissions(_AllAnyPermissions):
             if is_successful(result):
                 return True
 
-            match result:
-                case Failed():
-                    failures.append(result)
-                case _:
-                    failures.append(Failed())
+            failures.append(as_failed(result))
 
         match failures:
             case []:

@@ -6,7 +6,18 @@ from ._given import Given
 from ._permissions import AllPermissions, AnyPermissions, NotPermission, Permission, PermissionWrapper
 from ._policy import Policy
 from ._requires import Requires
-from ._results import CheckResult, Failed, Skipped, fail, is_failed, is_skipped, is_successful, skip
+from ._results import (
+    CheckResult,
+    Failed,
+    Skipped,
+    as_failed,
+    fail,
+    get_reason,
+    is_failed,
+    is_skipped,
+    is_successful,
+    skip,
+)
 from ._wrappers import (
     Advisory,
     AllowSkipped,
@@ -58,8 +69,10 @@ __all__ = [
     "When",
     "WithError",
     "add_permissions",
+    "as_failed",
     "evaluate",
     "fail",
+    "get_reason",
     "is_failed",
     "is_skipped",
     "is_successful",

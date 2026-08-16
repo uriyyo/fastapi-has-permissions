@@ -110,6 +110,35 @@ elif is_failed(result):
 
 These are `TypeIs` guards, so your type checker will narrow the type after the check.
 
+## Reading a Result
+
+Two helpers cover what is otherwise an `isinstance` check. `get_reason()` returns whatever
+explanation a result carries, and `as_failed()` gives you the `Failed` to propagate:
+
+```python
+from fastapi_has_permissions import as_failed, get_reason
+
+get_reason(Skipped(reason="no opinion"))   # "no opinion"
+get_reason(Failed(reason="denied"))        # "denied"
+get_reason(True)                           # None -- a bare boolean explains nothing
+
+as_failed(Failed(reason="denied"))         # the failure it already carries
+as_failed(Skipped())                       # an empty `Failed`
+as_failed(Skipped(), Failed(code="gone"))  # the fallback, for results carrying no failure
+```
+
+They are most useful in a [custom wrapper](wrappers.md#custom-wrappers), where a
+`__map_result__` has to handle every kind of result:
+
+```python
+class Quieted(ResultMapper):
+    def __map_result__(self, result: CheckResult, /) -> CheckResult:
+        if is_failed(result):
+            return Skipped(reason=get_reason(result))
+
+        return result
+```
+
 ## How Skip Interacts with Composition
 
 Skipped permissions have special behavior when combined with `&` and `|`:

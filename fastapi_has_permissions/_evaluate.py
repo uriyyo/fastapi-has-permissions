@@ -11,7 +11,7 @@ from fastapi_injected.scope import current_inject_scope
 from ._bases import ForceDataclass
 from ._permissions import Permission, PermissionWrapper
 from ._resolvers import lazy_check_permission
-from ._results import CheckResult, Failed, is_successful, to_failed
+from ._results import CheckResult, Failed, as_failed, is_successful, to_failed
 from .types import ExceptionFactory, PermissionFactory
 
 
@@ -30,7 +30,7 @@ class PermissionEvaluator(ForceDataclass):
         if is_successful(result):
             return result
 
-        failed = result if isinstance(result, Failed) else to_failed(permission)
+        failed = as_failed(result, to_failed(permission))
         raise self.__to_exception__(permission, failed)
 
     async def filter[T](self, items: Iterable[T], permission: PermissionFactory[T], /) -> list[T]:

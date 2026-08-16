@@ -4,7 +4,9 @@ from fastapi_has_permissions import (
     CheckResult,
     Failed,
     Skipped,
+    as_failed,
     fail,
+    get_reason,
     is_failed,
     is_skipped,
     is_successful,
@@ -61,3 +63,20 @@ def _unreachable_after_skip() -> None:
 
     # unreachable, so the deliberate type error below is never reported
     _never: int = "not an int"
+
+
+_boolean: CheckResult = True
+
+# `as_failed` always yields a `Failed`, whatever kind of result it was handed
+static_assert(is_equivalent_to(TypeOf[as_failed(Skipped())], Failed))
+static_assert(is_equivalent_to(TypeOf[as_failed(_boolean)], Failed))
+static_assert(is_equivalent_to(TypeOf[as_failed(Failed(), Failed(reason="fallback"))], Failed))
+
+# `get_reason` is defined for every result, and may find nothing
+static_assert(is_equivalent_to(TypeOf[get_reason(Skipped())], str | None))
+static_assert(is_equivalent_to(TypeOf[get_reason(_boolean)], str | None))
+
+
+def _result_helper_negatives() -> None:
+    as_failed(Skipped(), Skipped())  # type: ignore[ty:invalid-argument-type]
+    get_reason("not a result")  # type: ignore[ty:invalid-argument-type]
