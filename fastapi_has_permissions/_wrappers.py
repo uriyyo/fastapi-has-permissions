@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import final
+from typing import TYPE_CHECKING, final
 
 from ._permissions import PermissionWrapper
 from ._resolvers import lazy_check_permission
 from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, to_failed
 from .types import Exceptions
+
+if TYPE_CHECKING:
+    from collections.abc import Collection, Iterable
+
+    from fastapi.params import Depends
+
+
+@final
+class Undocumented(PermissionWrapper):
+    def __lazy_depends__(self, methods: Collection[str] = (), /) -> Iterable[Depends]:
+        return ()
 
 
 class ResultMapper(PermissionWrapper):
@@ -98,5 +109,6 @@ __all__ = [
     "FailOnExc",
     "ResultMapper",
     "SkipOnExc",
+    "Undocumented",
     "WithError",
 ]

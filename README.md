@@ -329,7 +329,7 @@ async def publish(post: Annotated[Post, Requires(PostPolicy(), PostPolicy.publis
 - **Skip / Fail helpers** -- call `skip()` or `fail()` inside `check_permissions()` for explicit control flow
 - **Wrappers** -- `AllowSkipped` / `DenySkipped` / `Advisory` rewrite a check's result, `WithError`
   gives a whole subtree one error config, `FailOnExc` / `SkipOnExc` keep a broken check from
-  turning into a 500
+  turning into a 500, `Undocumented` keeps a check out of the OpenAPI schema
 - **Built-in common permissions** -- `IsAuthenticated`, `HasScope`, `HasRole` ready to use with your auth dependencies
 - **Policies** -- `Policy` groups a resource's rules and dispatches on the request method; `Requires`
   checks and injects the loaded object for object-level permissions

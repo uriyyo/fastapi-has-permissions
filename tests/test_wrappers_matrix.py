@@ -15,6 +15,7 @@ from fastapi_has_permissions import (
     Permission,
     PermissionWrapper,
     SkipOnExc,
+    Undocumented,
     WithError,
     add_permissions,
     fail,
@@ -139,6 +140,10 @@ WRAPPERS: dict[str, tuple[Callable[[Permission], Permission], dict[Behaviour, St
             Behaviour.SKIP: Status.UNAVAILABLE,
             Behaviour.RAISE: Status.UNAVAILABLE,
         },
+    ),
+    "undocumented": (
+        Undocumented,
+        {Behaviour.PASS: Status.OK, Behaviour.FAIL: Status.DENIED, Behaviour.SKIP: Status.DENIED},
     ),
     "skip-on-exc": (
         lambda perm: AllowSkipped(SkipOnExc(perm, (BackendError,))),

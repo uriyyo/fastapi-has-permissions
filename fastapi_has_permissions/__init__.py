@@ -13,6 +13,7 @@ from ._wrappers import (
     FailOnExc,
     ResultMapper,
     SkipOnExc,
+    Undocumented,
     WithError,
 )
 from .types import Dep, DepFactory, Resource
@@ -40,6 +41,7 @@ __all__ = [
     "ResultMapper",
     "SkipOnExc",
     "Skipped",
+    "Undocumented",
     "WithError",
     "add_permissions",
     "evaluate",

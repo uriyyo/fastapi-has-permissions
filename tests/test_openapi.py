@@ -13,6 +13,7 @@ from fastapi_has_permissions import (
     Permission,
     Policy,
     Requires,
+    Undocumented,
     add_permissions,
 )
 from fastapi_has_permissions._openapi import build_permission_schema, route_declarations
@@ -196,6 +197,44 @@ def test_a_policy_documents_only_the_action_matching_the_method(spec: dict[str, 
     # GET maps to `read` and DELETE to `delete`, so neither should advertise the other's
     assert params(spec, "/policy", "get") == ["x-actor"]
     assert params(spec, "/policy", "delete") == ["x-other"]
+
+
+class TestUndocumented:
+    @pytest.fixture(scope="class")
+    @classmethod
+    def hidden_app(cls) -> FastAPI:
+        application = FastAPI()
+        add_permissions(application)
+
+        @application.get("/hidden", dependencies=[Depends(Undocumented(NeedsActor()))])
+        async def hidden() -> str:
+            return "ok"
+
+        @application.get("/partly", dependencies=[Depends(Undocumented(NeedsActor()) | NeedsOther())])
+        async def partly() -> str:
+            return "ok"
+
+        return application
+
+    def test_the_wrapped_permission_is_not_documented(self, hidden_app: FastAPI) -> None:
+        assert params(hidden_app.openapi(), "/hidden") == []
+
+    def test_only_the_wrapped_subtree_is_excluded(self, hidden_app: FastAPI) -> None:
+        # the other branch of the composition still documents itself
+        assert params(hidden_app.openapi(), "/partly") == ["x-other"]
+
+    @pytest.mark.parametrize(
+        ("actor", "expected_status"),
+        [
+            pytest.param("ok", status.HTTP_200_OK, id="allowed"),
+            pytest.param("no", status.HTTP_403_FORBIDDEN, id="denied"),
+        ],
+    )
+    def test_it_is_still_enforced(self, hidden_app: FastAPI, actor: str, expected_status: int) -> None:
+        with TestClient(hidden_app) as test_client:
+            response = test_client.get("/hidden", headers={"x-actor": actor})
+
+        assert response.status_code == expected_status
 
 
 class TestDocumentingIsInert:

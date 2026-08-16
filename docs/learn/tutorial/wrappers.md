@@ -139,6 +139,32 @@ Exceptions that are not listed are re-raised as usual.
     Depends(FailOnExc(SkipOnExc(HasEntitlement(), (RequestValidationError,)), (RedisError,)))
     ```
 
+## `Undocumented` -- Keep a Check Out of the Schema
+
+`add_permissions()` puts each route's permission requirements into the OpenAPI schema, which is
+usually what you want -- a client cannot send a header it has not been told about. Occasionally it
+is not: a check may read something callers are not meant to know exists, such as an internal
+routing header or a break-glass token.
+
+```python
+from fastapi_has_permissions import Undocumented
+
+Depends(Undocumented(HasBreakGlassToken()))
+```
+
+The check still runs and still denies; it just contributes nothing to the schema. Exclusion covers
+the wrapped subtree only, so the rest of a composition documents itself as usual:
+
+```python
+# `x-public` is documented, the break-glass header is not
+Depends(Undocumented(HasBreakGlassToken()) | HasPublicAccess())
+```
+
+!!! note
+
+    This hides the requirement, it does not remove it. A caller who does not satisfy the check
+    still gets a `403` -- they simply will not learn why from the schema.
+
 ## Custom Wrappers
 
 `PermissionWrapper` is the base class for all of them. Subclass `ResultMapper` to rewrite a result,
