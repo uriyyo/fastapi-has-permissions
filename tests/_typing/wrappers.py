@@ -10,12 +10,15 @@ from fastapi_has_permissions import (
     ResultMapper,
     SkipOnExc,
     Undocumented,
+    When,
     WithError,
 )
+from fastapi_has_permissions._wrappers import WhenPermission
 from fastapi_has_permissions.types import Exceptions
 
 from .deps import (
     Allow,
+    Deny,
     IsAdmin,
     RoleDep,
     TypeOf,
@@ -49,9 +52,19 @@ static_assert(is_equivalent_to(Exceptions, tuple[type[BaseException], ...]))
 static_assert(is_equivalent_to(TypeOf[AllowSkipped(Allow()) & Advisory(Allow())], Permission))
 
 
+# `When` reads guard-first, and yields a permission like every other wrapper
+static_assert(is_equivalent_to(TypeOf[When(Allow(), Deny())], WhenPermission))
+static_assert(is_subtype_of(WhenPermission, Permission))
+static_assert(is_equivalent_to(TypeOf[When(Allow(), Deny()) | When(Deny(), Allow())], Permission))
+
+
 def _negatives() -> None:
     AllowSkipped()  # type: ignore[ty:missing-argument]
     AllowSkipped(RoleDep)  # type: ignore[ty:invalid-argument-type]
+
+    When(Allow())  # type: ignore[ty:missing-argument]
+    When(Allow(), RoleDep)  # type: ignore[ty:invalid-argument-type]
+    When(RoleDep, Allow())  # type: ignore[ty:invalid-argument-type]
 
     SkipOnExc(Allow())  # type: ignore[ty:missing-argument]
     # a bare exception class, not a tuple of them

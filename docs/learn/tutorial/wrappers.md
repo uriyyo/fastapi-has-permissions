@@ -55,6 +55,54 @@ a success but can never deny the request on its own.
 Depends(Advisory(IsInBetaCohort()) & IsAdmin())
 ```
 
+## `When` -- Say a Rule Does Not Apply
+
+`When(guard, permission)` answers a different question from the rest of this page: not *is access
+granted*, but *does this rule have an opinion at all*. If the guard does not succeed the whole
+branch skips, and the wrapped permission never runs:
+
+```python
+from fastapi_has_permissions import When
+
+When(IsTeacherActor(), OwnsStudent(FromPath[UUID]))
+```
+
+This is what makes a rule set that serves several kinds of caller expressible. Because
+[`|` ignores a skipped branch](boolean_composition.md), each branch abstains unless it applies,
+and whichever one does applies decides:
+
+```python
+read = (
+      When(IsTeacherActor(), OwnsStudent(FromPath[UUID]))
+    | When(IsStudentActor(), StudentIsSelf(FromPath[UUID]))
+    | When(IsCapabilityActor(), GrantCovers(FromPath[UUID]))
+)
+```
+
+- a teacher is judged only by `OwnsStudent`, and a denial there is a real denial
+- a student is judged only by `StudentIsSelf`
+- a caller no branch claims skips every branch, and a skip at the root **denies**
+
+That last point is the reason to reach for `When` rather than assembling something out of the
+other combinators. The obvious spellings are wrong, and one of them is wrong in the dangerous
+direction:
+
+| Instead of | What happens when the guard fails |
+| --- | --- |
+| `~guard \| permission` | `~guard` **succeeds**, so the branch **allows** |
+| `guard & permission` | a hard denial, so sibling branches never get their say |
+| `Advisory(guard) & permission` | the guard abstains, and the rule runs anyway |
+
+!!! note
+
+    A guard that *skips* also makes the branch skip -- the wrapper asks whether the guard
+    succeeded, not whether it failed. The guard's reason is carried onto the skip, so an
+    abstention stays debuggable.
+
+If "no branch applies" should mean allow rather than deny, that is
+[`AllowSkipped`](#allowskipped-skip-means-allow) around the whole tree -- an explicit opt-in
+rather than a default.
+
 ## `WithError` -- One Error for a Whole Subtree
 
 Every permission reports its own message, status code, error code and headers, which is not always

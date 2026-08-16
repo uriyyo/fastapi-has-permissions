@@ -16,6 +16,7 @@ from ._wrappers import (
     ResultMapper,
     SkipOnExc,
     Undocumented,
+    When,
     WithError,
 )
 from .common import Allow, Deny, HasRole, HasScope, IsAuthenticated
@@ -54,6 +55,7 @@ __all__ = [
     "SkipOnExc",
     "Skipped",
     "Undocumented",
+    "When",
     "WithError",
     "add_permissions",
     "evaluate",

@@ -3,15 +3,35 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING, final
 
-from ._permissions import PermissionWrapper
+from ._permissions import Permission, PermissionWrapper
 from ._resolvers import lazy_check_permission
-from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, to_failed
+from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, is_successful, to_failed
 from .types import Exceptions
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable
 
     from fastapi.params import Depends
+
+
+@final
+class WhenPermission(PermissionWrapper):
+    guard: Permission
+
+    def __sub_permissions__(self) -> Iterable[Permission]:
+        return (self.guard, self.permission)
+
+    async def check_permissions(self) -> CheckResult:
+        guard = await lazy_check_permission(self.guard)
+
+        if is_successful(guard):
+            return await lazy_check_permission(self.permission)
+
+        return Skipped(reason=guard.reason if isinstance(guard, Failed | Skipped) else None)
+
+
+def When(guard: Permission, permission: Permission, /) -> WhenPermission:  # noqa: N802
+    return WhenPermission(permission, guard=guard)
 
 
 @final
@@ -110,5 +130,7 @@ __all__ = [
     "ResultMapper",
     "SkipOnExc",
     "Undocumented",
+    "When",
+    "WhenPermission",
     "WithError",
 ]
