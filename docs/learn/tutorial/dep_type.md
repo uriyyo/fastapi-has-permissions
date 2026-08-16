@@ -111,6 +111,51 @@ article_router = APIRouter(
 Any form FastAPI understands works in a `Dep` slot -- `DepFactory[...]`, a plain
 `Annotated[T, Depends(func)]`, or a bare `Depends(func)`.
 
+## Filling a Slot With a Value You Already Have
+
+The dependencies above all read something out of the request. Outside a request there is nothing to
+read from -- a background job, a service function or a message handler already holds the article, so
+there is no path parameter to resolve. `Given` fills a `Dep` slot with a value directly:
+
+```python
+from fastapi_has_permissions import Given, evaluate
+
+# in a route -- the article is loaded from the path
+BelongsToSameWorkspace(ArticleDep)
+
+# in a background job -- the article is already in hand
+await evaluate(BelongsToSameWorkspace(Given(article)))
+```
+
+Both construct the same permission. The check itself never learns which side it was called from, so a
+rule is written once and reused everywhere rather than duplicated in a request-shaped and an
+argument-shaped form.
+
+`Given(value)` is an ordinary `Dep[T]` built from a constant, so it works anywhere a dependency
+marker works -- including as a [policy](policies.md) resource:
+
+```python
+Requires(Given(article), ArticlePolicy())
+```
+
+Because the marker is typed, a value of the wrong type is caught at the call site:
+
+```python
+class BelongsToSameWorkspace(Permission):
+    resource_dep: Dep[HasWorkspaceID]
+
+
+BelongsToSameWorkspace(Given(article))       # ok
+BelongsToSameWorkspace(Given(article.id))    # type error -- a UUID is not a HasWorkspaceID
+```
+
+!!! note
+
+    Two `Given` markers built from equal values are themselves equal, so permissions built from them
+    compare equal and share a single dependency cache entry -- the same way a repeated
+    `Depends(get_article)` does. See [Deferred Resolution](deferred_resolution.md) for how a scope is
+    established outside a request.
+
 ## Multiple `Dep` Fields
 
 A permission can have multiple `Dep` fields. Each one is resolved and passed as a positional argument
