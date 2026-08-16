@@ -120,7 +120,7 @@ async def custom_message():
     A permission's own error config is applied when that permission is the **root** of the tree --
     the one passed to `Depends()`. A permission nested inside a composition reports the error of
     whichever child denied, so `(RequiresAuthentication(status_code=404) | IsAdmin())` still answers
-    with the child's `401`. Use [`WithError`](#witherror----one-error-for-a-whole-subtree) to change
+    with the child's `401`. Use [`WithError`](#witherror-one-error-for-a-whole-subtree) to change
     the error of a nested subtree.
 
 ## `WithError` -- One Error for a Whole Subtree

@@ -39,7 +39,7 @@ it into a `Failed` result with the provided reason. The reason is used as the HT
 Call `skip()` inside `check_permissions` to skip the permission check entirely. A skipped permission
 is treated as if it was never checked, so the other permissions of a composition decide the outcome.
 It is an abstention, not an approval -- a skip that reaches the root of a permission tree denies the
-request unless you wrap it into [`AllowSkipped`](#allowskipped----opt-into-skip-means-allow):
+request unless you wrap it into [`AllowSkipped`](#allowskipped-opt-into-skip-means-allow):
 
 ```python
 from fastapi import Request

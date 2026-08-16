@@ -174,6 +174,67 @@ Naming an action replaces the method mapping -- this route is `publish`, not `cr
 even though it is a `POST`. Because actions are plain attributes, `PostPolicy.publish` is
 just a reference: your editor can jump to it and a typo is an `AttributeError` at import.
 
+## Outside a request
+
+A policy's actions are ordinary [permissions](class_based.md), and a permission does not need a
+request. Naming one gives you something you can evaluate anywhere -- a service function, a
+background job, an MCP tool, a message handler:
+
+```python
+from fastapi_has_permissions import evaluate
+
+async with evaluate.scope({ActorDep: actor}) as perms:
+    await perms.require(PostPolicy.publish)
+```
+
+Nothing about the policy changes. The same `PostPolicy.publish` object backs the route and the
+job, which is the point: the rule is written once.
+
+### Supplying what the rule needs
+
+A rule written for HTTP usually reads an actor, and off a request there is nobody to read.
+[`evaluate.scope()`](evaluating.md#scopes) binds those dependencies for a block of checks, which
+is why the example above opens one.
+
+!!! warning
+
+    Evaluating an actor-dependent rule *without* a scope does not fail. The dependency resolves
+    against an empty stand-in request, so a check that should have been made against a real actor
+    quietly denies -- or, for a rule that tolerates an absent actor, quietly allows. Open a scope
+    and bind the actor.
+
+Where an action is parametrised by a subject, pass the value you already have with
+[`Given`](dep_type.md#filling-a-slot-with-a-value-you-already-have):
+
+```python
+class PostPolicy(Policy[Post]):
+    publish = IsAuthor(FromPath[UUID])
+
+
+# the route resolves the id from the path, the job already holds it
+await evaluate.require(IsAuthor(Given(post.id)))
+```
+
+### Choosing an action at runtime
+
+A transport that knows only whether it is reading or writing picks the attribute:
+
+```python
+async def run_operation(policy: Policy, *, writes: bool) -> None:
+    await evaluate.require(getattr(policy, "update" if writes else "read"))
+```
+
+### What does not carry over
+
+Method dispatch is the one part that is HTTP-shaped. `Depends(PostPolicy())` asks the request
+which action applies, so it only works inside a request -- off one, name the action yourself.
+`Requires` is likewise a FastAPI dependency and belongs on a route.
+
+!!! tip
+
+    The same applies when testing a rule. See [Testing Permissions](testing.md), which uses the
+    same scope and the same assertions against a policy action.
+
 ## The four forms of `Requires`
 
 | Call                                 | Resource                    | Check           |
