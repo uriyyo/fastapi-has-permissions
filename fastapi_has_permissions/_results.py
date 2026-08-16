@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, NoReturn
 
 from typing_extensions import TypeIs
+
+from ._bases import ForceDataclass
 
 if TYPE_CHECKING:
     from ._permissions import Permission
@@ -21,13 +22,11 @@ class PermissionCheckFailed(Exception):  # noqa: N818
         self.reason = reason
 
 
-@dataclass
-class Skipped:
+class Skipped(ForceDataclass):
     reason: str | None = None
 
 
-@dataclass
-class Failed:
+class Failed(ForceDataclass):
     reason: str | None = None
     status_code: int | None = None
     code: str | None = None

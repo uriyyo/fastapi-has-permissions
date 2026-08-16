@@ -53,12 +53,29 @@ def test_as_failed_falls_back_for_anything_carrying_no_failure(result) -> None:
 
 def test_the_result_predicates_stay_mutually_consistent() -> None:
     # `is_failed` covers a bare `False` as well as a `Failed`, and the three never overlap
-    for result, successful, failed, skipped in [
-        (True, True, False, False),
-        (False, False, True, False),
-        (Failed(), False, True, False),
-        (Skipped(), False, False, True),
-    ]:
+    for result, (successful, failed, skipped) in {
+        True: (True, False, False),
+        False: (False, True, False),
+        Failed(): (False, True, False),
+        Skipped(): (False, False, True),
+    }.items():
         assert is_successful(result) is successful, result
         assert is_failed(result) is failed, result
         assert is_skipped(result) is skipped, result
+
+
+def test_results_are_hashable() -> None:
+    # `ForceDataclass` hashes by value, so a result can be keyed, cached or set-membered
+    assert hash(Failed(reason="denied")) == hash(Failed(reason="denied"))
+    assert hash(Skipped(reason="abstained")) == hash(Skipped(reason="abstained"))
+    assert {Failed(), Failed(), Skipped()} == {Failed(), Skipped()}
+
+
+def test_an_unhashable_field_falls_back_to_identity() -> None:
+    # `headers` is a dict, so these hash by identity while still comparing equal - the same
+    # trade-off permissions make, and the reason a result is not a safe cache key
+    with_headers = Failed(headers={"WWW-Authenticate": "Bearer"})
+    same = Failed(headers={"WWW-Authenticate": "Bearer"})
+
+    assert with_headers == same
+    assert hash(with_headers) != hash(same)
