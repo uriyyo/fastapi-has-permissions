@@ -8,6 +8,7 @@ from fastapi_injected import resolve
 from ._bases import ForceDataclass
 from ._permissions import Permission
 from ._policy import Policy
+from ._resolvers import as_validation_error
 from .types import Resource
 
 
@@ -18,7 +19,10 @@ class RequiresResolver[R](ForceDataclass):
     async def __call__(self) -> R:
         await resolve(self.requirement)
 
-        return cast("R", await resolve(self.resource_dep))
+        # the loader reads the request too, so a parameter it is missing is the caller's
+        # mistake - a 422, exactly as it would be on the handler itself
+        with as_validation_error():
+            return cast("R", await resolve(self.resource_dep))
 
 
 class RequiresDepends[R](Depends):

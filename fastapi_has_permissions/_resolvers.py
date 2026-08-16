@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, cast
 
 from fastapi.exceptions import RequestValidationError
@@ -10,6 +11,8 @@ from ._deps_args import remap_deps_args
 from ._results import CheckResult, Skipped, SkipPermissionCheck, call_permissions_check
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from ._permissions import Permission
 
 
@@ -35,11 +38,11 @@ def to_validation_error(exc: ValueError, /) -> RequestValidationError | None:
             return None
 
 
-async def lazy_check_permission(permission: Permission, /) -> CheckResult:
+@contextmanager
+def as_validation_error() -> Iterator[None]:
+
     try:
-        return cast("CheckResult", await resolve(PermissionResolver(permission)))
-    except SkipPermissionCheck as exc:
-        return Skipped(reason=exc.reason)
+        yield
     except ValueError as exc:
         if validation_error := to_validation_error(exc):
             raise validation_error from exc
@@ -47,8 +50,17 @@ async def lazy_check_permission(permission: Permission, /) -> CheckResult:
         raise
 
 
+async def lazy_check_permission(permission: Permission, /) -> CheckResult:
+    try:
+        with as_validation_error():
+            return cast("CheckResult", await resolve(PermissionResolver(permission)))
+    except SkipPermissionCheck as exc:
+        return Skipped(reason=exc.reason)
+
+
 __all__ = [
     "PermissionResolver",
+    "as_validation_error",
     "lazy_check_permission",
     "to_validation_error",
 ]

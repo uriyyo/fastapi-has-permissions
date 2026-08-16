@@ -89,6 +89,19 @@ async def quiet(doc: Annotated[Doc, Requires(DocDep, Deny(auto_error=False))]) -
     return {"name": doc.name}
 
 
+# a loader whose own input the caller must supply, and which has no default
+async def get_strict_doc(x_strict: Annotated[str, Header()]) -> Doc:
+    return Doc(name=x_strict)
+
+
+StrictDocDep = DepFactory[Doc, get_strict_doc]
+
+
+@app.get("/strict-loader")
+async def strict_loader(doc: Annotated[Doc, Requires(StrictDocDep, Allow())]) -> Any:
+    return {"name": doc.name}
+
+
 @app.get("/with-deps")
 async def with_deps(doc: Annotated[Doc, Requires(DocDep, IsAdmin(RoleDep))]) -> Any:
     return {"name": doc.name}
@@ -185,6 +198,16 @@ def test_error_config_propagates_from_the_permission(app_client: TestClient) -> 
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json()["detail"] == {"code": "gone", "message": "no such doc"}
+
+
+def test_a_loader_validation_error_is_a_422() -> None:
+    # the loader reads the request too, so a parameter it is missing is the caller's
+    # mistake - not a crash
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get("/strict-loader")
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.json()["detail"][0]["loc"] == ["header", "x-strict"]
 
 
 def test_skip_denies(app_client: TestClient) -> None:
