@@ -59,6 +59,7 @@ nav:
           - "Deferred Resolution": learn/tutorial/deferred_resolution.md
           - "The Dep Type": learn/tutorial/dep_type.md
           - "Policies": learn/tutorial/policies.md
+          - "Testing Permissions": learn/tutorial/testing.md
       - "Built-in Permissions":
           - "IsAuthenticated": learn/builtin/is_authenticated.md
           - "HasScope": learn/builtin/has_scope.md
