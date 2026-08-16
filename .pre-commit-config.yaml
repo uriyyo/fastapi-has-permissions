@@ -23,4 +23,5 @@ repos:
         language: python
         name: ty
         pass_filenames: false
-        entry: uv run ty check fastapi_has_permissions --error-on-warning
+        language_version: python3.12
+        entry: uv run ty check fastapi_has_permissions tests/_typing --error-on-warning
