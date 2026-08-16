@@ -35,10 +35,10 @@ async def protected():
 - With `Authorization` header: `200 OK`
 - Without `Authorization` header: `403 Forbidden` (automatic)
 
-## Disabling Auto Error with `no_auto_error()`
+## Disabling Auto Error
 
-The `no_auto_error()` helper wraps a permission so that failed checks return the result instead of
-raising an exception. This lets your route handler inspect the result and decide what to do:
+Pass `auto_error=False` to a permission and a failed check returns the result instead of raising.
+This lets your route handler inspect the result and decide what to do:
 
 ```python
 from typing import Annotated
@@ -46,7 +46,6 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Request
 
 from fastapi_has_permissions import CheckResult, Permission
-from fastapi_has_permissions.common import no_auto_error
 
 
 class HasAuthorizationHeader(Permission):
@@ -62,7 +61,7 @@ async def check_auth(
     *,
     has_auth: Annotated[
         CheckResult,
-        Depends(no_auto_error(HasAuthorizationHeader())),
+        Depends(HasAuthorizationHeader(auto_error=False)),
     ],
 ) -> dict[str, bool]:
     return {"has_auth": bool(has_auth)}
@@ -76,8 +75,8 @@ that you can convert to `bool` or inspect further.
 
 !!! note
 
-    `no_auto_error()` returns a `PermissionWrapper` with `auto_error=False`. The wrapped permission
-    itself is unchanged -- only the auto-error behavior is disabled.
+    `auto_error` is keyword-only and defined on the `Permission` base class, so every permission --
+    built-in, custom or wrapper -- accepts it.
 
 ## Use Cases
 
@@ -91,7 +90,6 @@ from typing import Annotated
 from fastapi import Depends
 
 from fastapi_has_permissions import CheckResult
-from fastapi_has_permissions.common import no_auto_error
 
 
 @app.get("/dashboard")
@@ -99,7 +97,7 @@ async def dashboard(
     *,
     is_admin: Annotated[
         CheckResult,
-        Depends(no_auto_error(HasAdminRole())),
+        Depends(HasAdminRole(auto_error=False)),
     ],
 ) -> dict:
     data = {"welcome": "Hello!"}
@@ -121,7 +119,6 @@ from fastapi import Depends
 from fastapi.responses import JSONResponse
 
 from fastapi_has_permissions import CheckResult, is_failed
-from fastapi_has_permissions.common import no_auto_error
 
 
 @app.get("/resource")
@@ -129,7 +126,7 @@ async def get_resource(
     *,
     result: Annotated[
         CheckResult,
-        Depends(no_auto_error(HasAuthorizationHeader())),
+        Depends(HasAuthorizationHeader(auto_error=False)),
     ],
 ):
     if is_failed(result):
@@ -151,14 +148,13 @@ from typing import Annotated
 from fastapi import Depends
 
 from fastapi_has_permissions import CheckResult
-from fastapi_has_permissions.common import no_auto_error
 
 
 @app.get("/profile")
 async def profile(
     *,
-    is_admin: Annotated[CheckResult, Depends(no_auto_error(HasAdminRole()))],
-    is_moderator: Annotated[CheckResult, Depends(no_auto_error(HasModeratorRole()))],
+    is_admin: Annotated[CheckResult, Depends(HasAdminRole(auto_error=False))],
+    is_moderator: Annotated[CheckResult, Depends(HasModeratorRole(auto_error=False))],
 ) -> dict:
     return {
         "role": "admin" if is_admin else "moderator" if is_moderator else "user",
@@ -173,22 +169,13 @@ the library checks `auto_error`:
 - If `auto_error=True` (default) and the check failed, `raise_http_exception()` is called.
 - If `auto_error=False`, the raw `CheckResult` is returned to the caller (your route handler).
 
-The `no_auto_error()` function is a shorthand for wrapping a permission with `auto_error=False`:
+## With Boolean Composition
+
+A composed permission is built by the `&` and `|` operators, so there is no constructor call of your
+own to pass `auto_error` to. Wrap it in a `PermissionWrapper` instead:
 
 ```python
 from fastapi_has_permissions import PermissionWrapper
-
-# These are equivalent:
-no_auto_error(HasAuthorizationHeader())
-PermissionWrapper(HasAuthorizationHeader(), auto_error=False)
-```
-
-## With Boolean Composition
-
-`no_auto_error()` works with composed permissions too:
-
-```python
-from fastapi_has_permissions.common import no_auto_error
 
 composed = HasAuthorizationHeader() & HasAdminRole()
 
@@ -198,7 +185,7 @@ async def check(
     *,
     result: Annotated[
         CheckResult,
-        Depends(no_auto_error(composed)),
+        Depends(PermissionWrapper(composed, auto_error=False)),
     ],
 ) -> dict[str, bool]:
     return {"allowed": bool(result)}
@@ -206,6 +193,6 @@ async def check(
 
 !!! tip
 
-    Use `no_auto_error()` when you need the permission result inside your route handler.
+    Use `auto_error=False` when you need the permission result inside your route handler.
     For standard "allow or deny" behavior, the default `auto_error=True` is simpler and
     more appropriate.

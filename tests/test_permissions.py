@@ -14,7 +14,6 @@ from fastapi_has_permissions import (
     Permission,
     add_permissions,
 )
-from fastapi_has_permissions.common import no_auto_error
 
 from .future_annotations_perms import HasRoleFutureAnnotations
 
@@ -74,7 +73,7 @@ async def auto_error_false_route(
     *,
     has_auth: Annotated[
         CheckResult,
-        Depends(no_auto_error(HasAuthorizationHeader())),
+        Depends(HasAuthorizationHeader(auto_error=False)),
     ],
 ) -> dict[str, bool]:
     return {"has_auth": bool(has_auth)}

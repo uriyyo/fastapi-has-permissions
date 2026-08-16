@@ -12,7 +12,6 @@ from fastapi_has_permissions import (
     Undocumented,
     WithError,
 )
-from fastapi_has_permissions.common import no_auto_error
 from fastapi_has_permissions.types import Exceptions
 
 from .deps import (
@@ -49,7 +48,6 @@ static_assert(is_equivalent_to(Exceptions, tuple[type[BaseException], ...]))
 
 # a wrapper composes like any other permission
 static_assert(is_equivalent_to(TypeOf[AllowSkipped(Allow()) & Advisory(Allow())], Permission))
-static_assert(is_equivalent_to(TypeOf[no_auto_error(Allow())], PermissionWrapper))
 
 
 def _negatives() -> None:
@@ -60,8 +58,6 @@ def _negatives() -> None:
     # a bare exception class, not a tuple of them
     SkipOnExc(Allow(), ValueError)  # type: ignore[ty:invalid-argument-type]
     FailOnExc(Allow(), ("ValueError",))  # type: ignore[ty:invalid-argument-type]
-
-    no_auto_error(RoleDep)  # type: ignore[ty:invalid-argument-type]
 
 
 # `ResultMapper` / `ExcHandler` are the documented extension points ...
