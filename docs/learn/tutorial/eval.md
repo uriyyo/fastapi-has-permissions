@@ -1,7 +1,7 @@
 # Permission Results
 
-A permission used as a dependency is a *guard*: when the check fails the library raises an
-`HTTPException` and the route handler never runs. Sometimes you want the opposite -- to let the
+A permission used as a dependency is a *guard*: when the check fails the library raises a
+`PermissionDeniedError` -- answered as a `403` -- and the route handler never runs. Sometimes you want the opposite -- to let the
 request through and decide in the handler what a failure means. `Eval` is how you ask for the
 result instead of the guard.
 
@@ -96,7 +96,7 @@ async def dashboard(
 
 ### Custom Error Responses
 
-Return a custom response format instead of the default `HTTPException`:
+Return a custom response format from inside the handler:
 
 ```python
 from fastapi.responses import JSONResponse

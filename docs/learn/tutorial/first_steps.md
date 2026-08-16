@@ -33,7 +33,7 @@ Steps:
 When a request is made to `/protected`:
 
 - If the `Authorization` header is present, the route handler executes normally and returns `200 OK`.
-- If the header is missing, `check_permissions` returns `False` and the library raises an `HTTPException`
+- If the header is missing, `check_permissions` returns `False` and the library raises a `PermissionDeniedError`
   with status code `403 Forbidden`.
 
 ## How It Works
@@ -44,7 +44,8 @@ When a request is made to `/protected`:
 1. Resolves any parameters declared in `check_permissions` using FastAPI's DI (e.g., `Request`, `Header`, etc.).
 2. Calls `check_permissions` with the resolved values.
 3. If the result is `True`, the request proceeds.
-4. If the result is `False`, an `HTTPException` is raised with status `403` and detail `"Permission denied"`.
+4. If the result is `False`, a `PermissionDeniedError` is raised, which `add_permissions` renders
+   as status `403` with detail `"Permission denied"`.
 
 !!! tip
 

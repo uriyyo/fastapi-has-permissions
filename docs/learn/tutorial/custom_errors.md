@@ -1,8 +1,54 @@
 # Custom Error Responses
 
-By default, when a permission check fails, `fastapi-has-permissions` raises an `HTTPException` with
-status code `403 Forbidden` and detail `"Permission denied"`. You can customize both the message
-and the status code.
+By default, when a permission check fails, `fastapi-has-permissions` raises a
+`PermissionDeniedError` carrying status code `403 Forbidden` and message `"Permission denied"`,
+which is answered as an HTTP response of the same shape. You can customize both the message and
+the status code.
+
+## The Error a Denial Raises
+
+A permission does not raise an `HTTPException` directly. It raises `PermissionDeniedError`, and
+`add_permissions(app)` installs the handler that renders it:
+
+```python
+from fastapi_has_permissions import PermissionDeniedError
+
+app = FastAPI()
+add_permissions(app)   # installs the handler alongside everything else
+```
+
+The error carries the whole resolved configuration, plus the permission that produced it:
+
+| Attribute | Meaning |
+| --- | --- |
+| `message` | the resolved message |
+| `status_code` | the resolved status code |
+| `code` | the resolved application error code, if any |
+| `headers` | headers to send with the response, if any |
+| `permission` | the permission that denied |
+
+Two things follow. Outside a request -- in a background job, a worker or a CLI command -- there is
+nothing HTTP to catch, so catch the error itself:
+
+```python
+try:
+    await evaluate.require(OwnsArticle(Given(article)))
+except PermissionDeniedError as exc:
+    log.warning("denied by %s: %s", type(exc.permission).__name__, exc.message)
+```
+
+And inside a request, an application that answers in its own shape registers its own handler:
+
+```python
+@app.exception_handler(PermissionDeniedError)
+async def denied(request: Request, exc: PermissionDeniedError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.code or "forbidden", "detail": exc.message},
+    )
+```
+
+Everything below configures what that error carries.
 
 ## Class-Level Defaults
 

@@ -1,4 +1,5 @@
-from ._app import add_permissions
+from ._app import add_permissions, permission_denied_handler
+from ._errors import PermissionDeniedError
 from ._evaluate import Eval, Evaluate, PermissionEvaluator, evaluate
 from ._func import permission
 from ._given import Given
@@ -42,6 +43,7 @@ __all__ = [
     "IsAuthenticated",
     "NotPermission",
     "Permission",
+    "PermissionDeniedError",
     "PermissionEvaluator",
     "PermissionWrapper",
     "Policy",
@@ -60,5 +62,6 @@ __all__ = [
     "is_skipped",
     "is_successful",
     "permission",
+    "permission_denied_handler",
     "skip",
 ]

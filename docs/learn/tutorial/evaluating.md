@@ -122,11 +122,11 @@ async def report(perms: Evaluate) -> dict:
 
 Pass `request=` to supply one explicitly instead.
 
-## Raising Something Other Than `HTTPException`
+## Raising Something Other Than `PermissionDeniedError`
 
-`require` raises an `HTTPException` built from the permission's error configuration. Outside an
-HTTP handler that is rarely the right exception, so pass `on_failure` to map a denial onto your
-own type:
+`require` raises a [`PermissionDeniedError`](custom_errors.md#the-error-a-denial-raises) built from
+the permission's error configuration. That already carries no HTTP with it, so a job or a worker
+can simply catch it. When you would rather raise your own type, pass `on_failure`:
 
 ```python
 async with evaluate.scope({ActorDep: actor}, on_failure=to_tool_error) as perms:

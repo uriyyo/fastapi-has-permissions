@@ -11,7 +11,7 @@ from fastapi_injected import is_dep
 
 from ._bases import ForceDataclass
 from ._deps_args import get_signature_with_deps
-from ._errors import HTTPExcRaiser
+from ._errors import ErrorConfig
 from ._resolvers import PermissionResolver, lazy_check_permission
 from ._results import CheckResult, Failed, Skipped, is_failed, is_skipped, is_successful
 from .types import AsyncFunc, Dep
@@ -34,7 +34,7 @@ class BasePermission(ABC):  # noqa: B024
 class Permission(
     ForceDataclass,
     BasePermission,
-    HTTPExcRaiser,
+    ErrorConfig,
     ABC,
 ):
     __auto_error__: ClassVar[bool] = True
@@ -87,7 +87,7 @@ class Permission(
                 result = True
 
         if self.__auto_error__ and not result:
-            self.raise_http_exception(message, status_code, code, headers)
+            self.raise_error(message, status_code, code, headers)
 
         return ret
 

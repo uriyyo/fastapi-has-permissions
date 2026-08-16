@@ -1,11 +1,48 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, NoReturn
+from typing import TYPE_CHECKING, Any, ClassVar, NoReturn, cast
 
 from fastapi import HTTPException, status
 
+if TYPE_CHECKING:
+    from ._permissions import Permission
+
+
+class PermissionDeniedError(Exception):
+    def __init__(
+        self,
+        message: str,
+        /,
+        *,
+        status_code: int | None = None,
+        code: str | None = None,
+        headers: dict[str, str] | None = None,
+        permission: Permission | None = None,
+    ) -> None:
+        super().__init__(message)
+
+        self.message = message
+        self.status_code = status_code
+        self.code = code
+        self.headers = headers
+        self.permission = permission
+
+    def to_http_exception(self) -> HTTPException:
+        detail: Any = self.message
+
+        if self.code:
+            detail = {"code": self.code, "message": detail}
+
+        return HTTPException(
+            status_code=self.status_code or status.HTTP_403_FORBIDDEN,
+            detail=detail,
+            headers=self.headers,
+        )
+
 
 @dataclass
-class HTTPExcRaiser:
+class ErrorConfig:
     message: str | None = field(default=None, kw_only=True)
     status_code: int | None = field(default=None, kw_only=True)
     code: str | None = field(default=None, kw_only=True)
@@ -46,34 +83,32 @@ class HTTPExcRaiser:
     def has_default_error_config(self) -> bool:
         return self.message is None and self.status_code is None and self.code is None and self.headers is None
 
-    def build_http_exception(
+    def build_error(
         self,
         message: str | None = None,
         status_code: int | None = None,
         code: str | None = None,
         headers: dict[str, str] | None = None,
-    ) -> HTTPException:
-        detail: Any = self.resolve_exc_message(message)
-
-        if final_code := self.resolve_exc_code(code):
-            detail = {"code": final_code, "message": detail}
-
-        return HTTPException(
+    ) -> PermissionDeniedError:
+        return PermissionDeniedError(
+            self.resolve_exc_message(message),
             status_code=self.resolve_exc_status_code(status_code),
-            detail=detail,
+            code=self.resolve_exc_code(code),
             headers=self.resolve_exc_headers(headers),
+            permission=cast("Permission", self),
         )
 
-    def raise_http_exception(
+    def raise_error(
         self,
         message: str | None = None,
         status_code: int | None = None,
         code: str | None = None,
         headers: dict[str, str] | None = None,
     ) -> NoReturn:
-        raise self.build_http_exception(message, status_code, code, headers)
+        raise self.build_error(message, status_code, code, headers)
 
 
 __all__ = [
-    "HTTPExcRaiser",
+    "ErrorConfig",
+    "PermissionDeniedError",
 ]

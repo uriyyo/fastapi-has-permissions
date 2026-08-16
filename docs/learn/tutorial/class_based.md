@@ -142,7 +142,7 @@ async def admin_only():
 The `check_permissions` method returns a `CheckResult`, which can be:
 
 - `True` -- permission granted
-- `False` -- permission denied (raises `HTTPException` with `403`)
+- `False` -- permission denied (raises `PermissionDeniedError`, answered as `403`)
 - `Failed(reason="...")` -- permission denied with a custom message
 - `Skipped(reason="...")` -- permission check is skipped entirely (abstains, and is denied if it
   reaches the root of the tree -- see [Skip & Fail Helpers](skip_and_fail.md))

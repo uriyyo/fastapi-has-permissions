@@ -3,9 +3,17 @@ from typing import Annotated, ClassVar
 
 import pytest
 from fastapi import Depends, FastAPI, Header, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import Permission, WithError, add_permissions, evaluate, permission
+from fastapi_has_permissions import (
+    Permission,
+    PermissionDeniedError,
+    WithError,
+    add_permissions,
+    evaluate,
+    permission,
+)
 from fastapi_has_permissions.common import IsAuthenticated
 
 
@@ -129,3 +137,61 @@ async def test_overridden_get_exc_message_is_used() -> None:
     assert (await evaluate(DynamicMessage("admin"))).reason == "You need the 'admin' role"
     assert (await evaluate(WithError(DynamicMessage("admin")))).reason == "You need the 'admin' role"
     assert (await evaluate(WithError(DynamicMessage("admin"), message="Not found"))).reason == "Not found"
+
+
+class Denies(Permission):
+    default_exc_status_code: ClassVar[int] = status.HTTP_404_NOT_FOUND
+    default_exc_code: ClassVar[str] = "student_inactive"
+
+    async def check_permissions(self) -> bool:
+        return False
+
+
+@pytest.mark.asyncio
+async def test_denial_raises_a_transport_neutral_error() -> None:
+    # nothing about this call is HTTP, so nothing about the exception has to be either
+    with pytest.raises(PermissionDeniedError) as exc_info:
+        await evaluate.require(Denies())
+
+    exc = exc_info.value
+
+    assert exc.message == "Permission denied"
+    assert exc.status_code == status.HTTP_404_NOT_FOUND
+    assert exc.code == "student_inactive"
+    # the failing permission comes along, so a caller can branch on which rule denied
+    assert isinstance(exc.permission, Denies)
+
+
+def test_the_installed_handler_renders_it_as_http() -> None:
+    handled = FastAPI()
+    add_permissions(handled)
+
+    @handled.get("/denied", dependencies=[Depends(Denies())])
+    async def denied() -> str:  # pragma: no cover - never reached
+        return "ok"
+
+    with TestClient(handled) as client:
+        response = client.get("/denied")
+
+    # indistinguishable on the wire from the `HTTPException` this used to raise directly
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": {"code": "student_inactive", "message": "Permission denied"}}
+
+
+def test_an_app_can_answer_denials_in_its_own_shape() -> None:
+    custom = FastAPI()
+    add_permissions(custom)
+
+    @custom.get("/denied", dependencies=[Depends(Denies())])
+    async def denied() -> str:  # pragma: no cover - never reached
+        return "ok"
+
+    @custom.exception_handler(PermissionDeniedError)
+    async def handler(_: Request, exc: PermissionDeniedError) -> JSONResponse:
+        return JSONResponse(status_code=exc.status_code, content={"error": exc.code})
+
+    with TestClient(custom) as client:
+        response = client.get("/denied")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"error": "student_inactive"}

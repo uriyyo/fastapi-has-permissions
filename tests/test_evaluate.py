@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from typing import Annotated
 
 import pytest
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, Request, status
 from fastapi.testclient import TestClient
 from fastapi_injected import push_overrides
 
@@ -14,6 +14,7 @@ from fastapi_has_permissions import (
     Evaluate,
     Given,
     Permission,
+    PermissionDeniedError,
     PermissionEvaluator,
     add_permissions,
     evaluate,
@@ -250,7 +251,7 @@ async def test_scope_reports_failures_through_on_failure() -> None:
 @pytest.mark.asyncio
 async def test_scope_requires_raises_on_a_skip() -> None:
     async with evaluate.scope() as perms:
-        with pytest.raises(HTTPException):
+        with pytest.raises(PermissionDeniedError):
             await perms.require(AlwaysSkip())
 
 
