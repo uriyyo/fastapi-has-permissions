@@ -4,9 +4,8 @@ from functools import partial
 from typing import Any, overload
 
 from fastapi.dependencies.utils import get_typed_signature
-from fastapi_injected import is_dep, unwrap_dep_tp
+from fastapi_injected import is_dep, signature_with_deps, unwrap_dep_tp
 
-from ._deps_args import get_signature_with_deps
 from ._permissions import Permission
 from ._results import CheckResult
 from .types import AsyncFunc, Dep
@@ -42,7 +41,7 @@ class FuncPermission(Permission):
         yield from self.deps
 
     def __check_signature__(self) -> inspect.Signature:
-        return get_signature_with_deps(self.func, [*self.__deps__()])
+        return signature_with_deps(self.func, *self.__deps__())
 
     async def check_permissions(self, *args: Any, **kwargs: Any) -> CheckResult:
         return await self.func(*args, **kwargs)

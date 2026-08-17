@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, final
 
+from fastapi_injected import DependencyResolutionError
+
 from ._permissions import Permission, PermissionWrapper
 from ._resolvers import lazy_check_permission
 from ._results import (
@@ -156,14 +158,36 @@ class FailOnExc(ExcHandler):
         return to_failed(self)
 
 
+@final
+class SkipUnresolved(ExcHandler):
+    # the rule does not apply to this request rather than failing it - the dependency it
+    # asks for is not there to resolve, the way a path parameter is missing off its route
+    exceptions: Exceptions = (DependencyResolutionError,)
+
+    def __on_exc__(self, exc: BaseException, /) -> CheckResult:
+        return to_skipped(self, repr(exc))
+
+
+@final
+class FailUnresolved(ExcHandler):
+    # the same dependency failure read the other way - what cannot be resolved cannot be
+    # allowed, so the caller is denied rather than told their request was malformed
+    exceptions: Exceptions = (DependencyResolutionError,)
+
+    def __on_exc__(self, exc: BaseException, /) -> CheckResult:
+        return to_failed(self)
+
+
 __all__ = [
     "Advisory",
     "AllowSkipped",
     "DenySkipped",
     "ExcHandler",
     "FailOnExc",
+    "FailUnresolved",
     "ResultMapper",
     "SkipOnExc",
+    "SkipUnresolved",
     "Undocumented",
     "When",
     "WhenPermission",

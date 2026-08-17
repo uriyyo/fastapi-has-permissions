@@ -1,8 +1,9 @@
+from fastapi_injected import DependencyResolutionError, Given
+
 from ._app import add_permissions, permission_denied_handler
-from ._errors import PermissionDeniedError
+from ._errors import PermissionDeniedError, SyntheticScopeError
 from ._evaluate import Eval, Evaluate, PermissionEvaluator, evaluate
 from ._func import permission
-from ._given import Given
 from ._permissions import AllPermissions, AnyPermissions, NotPermission, Permission, PermissionWrapper
 from ._policy import Policy
 from ._requires import Requires
@@ -19,14 +20,17 @@ from ._results import (
     is_successful,
     skip,
 )
+from ._security import Security
 from ._wrappers import (
     Advisory,
     AllowSkipped,
     DenySkipped,
     ExcHandler,
     FailOnExc,
+    FailUnresolved,
     ResultMapper,
     SkipOnExc,
+    SkipUnresolved,
     Undocumented,
     When,
     WithError,
@@ -45,10 +49,13 @@ __all__ = [
     "DenySkipped",
     "Dep",
     "DepFactory",
+    "DependencyResolutionError",
+    "Depends",
     "Eval",
     "Evaluate",
     "ExcHandler",
     "FailOnExc",
+    "FailUnresolved",
     "Failed",
     "Given",
     "HasRole",
@@ -64,9 +71,12 @@ __all__ = [
     "Resolved",
     "Resource",
     "ResultMapper",
+    "Security",
     "SkipOnExc",
+    "SkipUnresolved",
     "Skipped",
     "Source",
+    "SyntheticScopeError",
     "Undocumented",
     "When",
     "WithError",

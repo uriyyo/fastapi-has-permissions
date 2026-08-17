@@ -142,7 +142,7 @@ wrapper that exception becomes a `500`:
 ```python
 from redis.exceptions import RedisError
 
-from fastapi_has_permissions import FailOnExc, SkipOnExc
+from fastapi_has_permissions import FailOnExc, SkipOnExc, SkipUnresolved
 
 # the backend is down -> deny the request instead of failing the whole endpoint
 Depends(FailOnExc(HasEntitlement(), (RedisError,)))
@@ -184,7 +184,7 @@ Exceptions that are not listed are re-raised as usual.
     Nest them when the two failures should mean different things:
 
     ```python
-    Depends(FailOnExc(SkipOnExc(HasEntitlement(), (RequestValidationError,)), (RedisError,)))
+    Depends(FailOnExc(SkipUnresolved(HasEntitlement()), (RedisError,)))
     ```
 
 ## `Undocumented` -- Keep a Check Out of the Schema

@@ -3,10 +3,9 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, Self, cast
 
 from fastapi import Request
 from fastapi.params import Depends
-from fastapi_injected import resolve
+from fastapi_injected import MakeDataclass, resolve
 from typing_extensions import TypeVar
 
-from ._bases import ForceDataclass
 from ._permissions import Permission
 from .common import Deny
 from .types import Resource
@@ -19,7 +18,7 @@ class _DefaultResource:
         return None
 
 
-class Policy(ForceDataclass, Generic[TResource]):
+class Policy(MakeDataclass, Generic[TResource]):
     if TYPE_CHECKING:
         # a `ClassVar` may not reference `TResource`, so the resource type is tied to the
         # policy through `bind` and `Requires` rather than through this declaration

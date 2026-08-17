@@ -4,16 +4,14 @@ from collections.abc import Callable, Collection, Iterable
 from typing import Any, cast, overload
 
 from fastapi.params import Depends
-from fastapi_injected import is_dep, resolve, unwrap_dep_dependency
+from fastapi_injected import MakeDataclass, is_dep, resolve, unwrap_dep_dependency
 
-from ._bases import ForceDataclass
 from ._permissions import Permission
 from ._policy import Policy
-from ._resolvers import as_validation_error
 from .types import Resource
 
 
-class RequiresResolver[R](ForceDataclass):
+class RequiresResolver[R](MakeDataclass):
     resource_dep: Resource[R]
     requirement: Permission | Policy[R]
 
@@ -27,8 +25,7 @@ class RequiresResolver[R](ForceDataclass):
     async def __call__(self) -> R:
         await resolve(self.requirement)
 
-        with as_validation_error():
-            return cast("R", await resolve(self.resource_dep))
+        return cast("R", await resolve(self.resource_dep))
 
 
 class RequiresDepends[R](Depends):

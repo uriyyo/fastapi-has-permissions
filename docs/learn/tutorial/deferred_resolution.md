@@ -33,19 +33,35 @@ class IsArticleAuthor(Permission):
 ```
 
 This works for `GET /articles/{article_id}`, but not for `GET /articles` -- there is no
-`article_id` there, so resolving `get_article` raises a `RequestValidationError`.
+`article_id` there, so resolving `get_article` raises a `DependencyResolutionError`, which
+`add_permissions` answers with the same `422` an unresolvable route parameter gets.
 
-## `SkipOnExc` -- Abstain Instead of Failing
+## `SkipUnresolved` -- Abstain Instead of Failing
 
 Wrap the permission to turn that failure into an abstention:
 
 ```python
-from fastapi.exceptions import RequestValidationError
+from fastapi_has_permissions import SkipUnresolved
 
-from fastapi_has_permissions import SkipOnExc
-
-author_check = SkipOnExc(IsArticleAuthor(), (RequestValidationError,))
+author_check = SkipUnresolved(IsArticleAuthor())
 ```
+
+`SkipUnresolved` catches only the dependency failure. A permission that raises for its own
+reasons still propagates -- use `SkipOnExc` to name those exceptions explicitly -- and an
+ordinary denial is left exactly as it was.
+
+`FailUnresolved` is the same failure read the other way: what cannot be resolved cannot be
+allowed, so the caller is denied rather than told their request was malformed.
+
+```python
+from fastapi_has_permissions import FailUnresolved
+
+# the article is not reachable from this route -> deny, do not answer 422
+Depends(FailUnresolved(IsArticleAuthor()))
+```
+
+Which one you want depends on whether the rule is the only thing guarding the route. Abstaining
+hands the decision to the rest of the tree; denying ends it.
 
 A skip that reaches the root of a permission tree is denied, so wrap the check in
 `AllowSkipped` to let the list endpoint through:
@@ -93,7 +109,7 @@ from fastapi_has_permissions import FailOnExc
 
 Depends(
     FailOnExc(
-        SkipOnExc(IsArticleAuthor(), (RequestValidationError,)),
+        SkipUnresolved(IsArticleAuthor()),
         (RedisError,),
         message="Authorization backend unavailable",
     ),
@@ -113,8 +129,8 @@ router = APIRouter(
     dependencies=[
         Depends(
             IsEditor()
-            | SkipOnExc(IsArticleAuthor(), (RequestValidationError,))
-            | (IsTeamLead() & SkipOnExc(BelongsToSameTeam(), (RequestValidationError,)))
+            | SkipUnresolved(IsArticleAuthor())
+            | (IsTeamLead() & SkipUnresolved(BelongsToSameTeam()))
         ),
     ],
 )

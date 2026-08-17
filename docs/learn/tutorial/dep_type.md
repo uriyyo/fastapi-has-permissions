@@ -176,9 +176,7 @@ A `Dep` field is resolved at check time, so a route where it cannot be resolved 
 fail -- wrap the permission to abstain instead:
 
 ```python
-from fastapi.exceptions import RequestValidationError
-
-from fastapi_has_permissions import Dep, Permission, SkipOnExc
+from fastapi_has_permissions import Dep, Permission, SkipUnresolved
 
 
 class BelongsToSameWorkspace(Permission):
@@ -188,7 +186,7 @@ class BelongsToSameWorkspace(Permission):
         return resource.workspace_id == current_user.workspace_id
 
 
-graceful = SkipOnExc(BelongsToSameWorkspace(ArticleDep), (RequestValidationError,))
+graceful = SkipUnresolved(BelongsToSameWorkspace(ArticleDep))
 ```
 
 Now the check is skipped when the dependency can't be resolved (e.g., on list endpoints without a

@@ -4,16 +4,20 @@ from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI, Header, Request, status
+from fastapi import Security as FastAPISecurity
 from fastapi.testclient import TestClient
 
 from fastapi_has_permissions import (
     AllPermissions,
     AnyPermissions,
     CheckResult,
+    Dep,
     DepFactory,
     Eval,
     Permission,
+    Security,
     add_permissions,
+    evaluate,
 )
 
 from .future_annotations_perms import HasRoleFutureAnnotations
@@ -276,8 +280,8 @@ def test_permissions_hash() -> None:
     assert hash(HasRole("admin")) == hash(HasRole("admin"))
 
 
-def test_no_hash_override_opts_out_of_identity_hash() -> None:
-    class ValueHashed(Permission, no_hash_override=True, unsafe_hash=True):
+def test_hashable_fields_hash_by_value() -> None:
+    class ValueHashed(Permission):
         role: str
 
         async def check_permissions(self) -> bool:
@@ -285,6 +289,19 @@ def test_no_hash_override_opts_out_of_identity_hash() -> None:
 
     assert ValueHashed("admin") == ValueHashed("admin")
     assert hash(ValueHashed("admin")) == hash(ValueHashed("admin"))
+
+
+def test_unhashable_fields_fall_back_to_identity_hash() -> None:
+    class Unhashable(Permission):
+        roles: list[str]
+
+        async def check_permissions(self) -> bool:
+            return True
+
+    permission = Unhashable(["admin"])
+
+    assert hash(permission) == hash(permission)
+    assert hash(Unhashable(["admin"])) != hash(permission)
 
 
 def test_dataclass_kwargs_are_applied() -> None:
@@ -332,3 +349,89 @@ class TestFutureAnnotations:
     )
     def test_permission_is_enforced(self, future_client: TestClient, role: str, expected_status: int) -> None:
         assert future_client.get("/future", headers={"role": role}).status_code == expected_status
+
+
+class _Scoped(Permission):
+    async def check_permissions(self) -> bool:
+        return True
+
+
+def test_security_normalises_list_scopes() -> None:
+    class OurSecurity(_Scoped):
+        def __resolver_to_depends__(self, resolver) -> object:
+            return Security(resolver, scopes=["read", "write"])
+
+    depends = next(iter(OurSecurity().__lazy_depends__()))
+
+    assert depends.scopes == ("read", "write")
+    assert hash(depends) == hash(next(iter(OurSecurity().__lazy_depends__())))
+
+
+def test_fastapi_security_is_converted_to_ours() -> None:
+    class FastAPIScoped(_Scoped):
+        def __resolver_to_depends__(self, resolver) -> object:
+            return FastAPISecurity(resolver, scopes=["read"])
+
+    depends = next(iter(FastAPIScoped().__lazy_depends__()))
+
+    assert isinstance(depends, Security)
+    assert depends.scopes == ("read",)
+    assert hash(depends) == hash(next(iter(FastAPIScoped().__lazy_depends__())))
+
+
+class _BareCallableDep(Permission):
+    role_dep: Dep
+
+    async def check_permissions(self, role: str, /) -> bool:
+        return role == "admin"
+
+
+async def _get_role_value() -> str:
+    return "admin"
+
+
+@pytest.mark.asyncio
+async def test_bare_callable_dep_field_resolves() -> None:
+    # a plain callable is a dependency the same way `Resource` accepts one - without the
+    # `Depends` wrap it used to land in annotation position and be read as a query param
+    assert await evaluate(_BareCallableDep(_get_role_value)) is True
+    assert await evaluate(_BareCallableDep(Depends(_get_role_value))) is True
+
+
+def test_bare_callable_dep_field_serves_a_route() -> None:
+    bare_app = FastAPI()
+    add_permissions(bare_app)
+
+    @bare_app.get("/bare", dependencies=[Depends(_BareCallableDep(_get_role_value))])
+    async def _route() -> str:
+        return "ok"
+
+    with TestClient(bare_app) as client:
+        assert client.get("/bare").status_code == status.HTTP_200_OK
+
+
+def test_annotated_marker_dep_field_is_not_wrapped() -> None:
+    # `Annotated[..., Path()]` is already an annotation - wrapping it in `Depends` would
+    # make FastAPI call the annotation as if it were the dependency
+    marker = Annotated[str, Header(alias="role")]
+
+    class Marked(_BareCallableDep):
+        pass
+
+    sign = Marked(marker).__check_signature__()
+
+    assert next(iter(sign.parameters.values())).annotation == marker
+
+
+def test_more_deps_than_parameters_is_rejected() -> None:
+    class TwoFieldsOneParam(Permission):
+        first: Dep
+        second: Dep
+
+        async def check_permissions(self, _value: str, /) -> bool:
+            return True
+
+    permission = TwoFieldsOneParam(Depends(_get_role_value), Depends(_get_role_value))
+
+    with pytest.raises(TypeError, match=r"2 dependencies cannot be bound to 1 parameters"):
+        permission.__check_signature__()

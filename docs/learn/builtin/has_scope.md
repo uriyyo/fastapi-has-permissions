@@ -99,7 +99,7 @@ class HasScope(Permission):
     scopes: Iterable[str]
 
     def __resolver_to_depends__(self, resolver: PermissionResolver) -> Any:
-        return Security(resolver, scopes=[*self.scopes])
+        return Security(resolver, scopes=sorted(self.scopes))
 
     async def check_permissions(
         self,
@@ -112,3 +112,19 @@ class HasScope(Permission):
 
 The `security_scopes: SecurityScopes` parameter is automatically provided by FastAPI's security system
 and contains the scopes declared via `Security(...)`.
+
+!!! note "Returning a `Security` from `__resolver_to_depends__`"
+
+    Dependants are cached by the annotation holding this `Depends`, so it has to be hashable --
+    and FastAPI's `Security(scopes=[...])` holds a `list`, which is not. Returning FastAPI's own
+    `Security` is fine: it is converted to `fastapi_has_permissions.Security`, a drop-in subclass
+    that normalises `scopes` to a tuple. Either import works, and two permissions asking for the
+    same scopes share a cached dependant.
+
+    The permission's own fields matter too: one holding a `list` still works, but it hashes by
+    identity rather than by value, so two equal permissions stop sharing a cached dependant.
+    `HasScope` normalises `scopes` to a `frozenset` in `__post_init__` for exactly this reason,
+    and sorts on the way out so the cache key is the same from one process to the next.
+
+    A `Depends` subclass of your own holding a `list` is still unhashable, and fails when the
+    dependant is built.

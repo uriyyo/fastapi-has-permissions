@@ -39,7 +39,7 @@ static_assert(is_equivalent_to(TypeOf[~(Allow() & Deny()) | ~Deny()], Permission
 static_assert(is_assignable_to(TypeOf[Allow().check_permissions], AsyncFunc[CheckResult]))
 static_assert(is_assignable_to(TypeOf[IsAdmin(RoleDep).check_permissions], AsyncFunc[CheckResult]))
 
-# `ForceDataclass` gives every permission a dataclass `__init__` over its declared fields
+# `MakeDataclass` gives every permission a dataclass `__init__` over its declared fields
 static_assert(is_equivalent_to(TypeOf[IsAdmin(RoleDep)], IsAdmin))
 static_assert(is_equivalent_to(TypeOf[IsAdmin(role_dep=RoleDep)], IsAdmin))
 

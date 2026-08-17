@@ -1,11 +1,12 @@
 from collections.abc import Iterable
 from typing import Any, ClassVar
 
-from fastapi import Security, status
+from fastapi import status
 from fastapi.security import SecurityScopes
 
 from ._permissions import Permission
 from ._resolvers import PermissionResolver
+from ._security import Security
 from .types import Dep
 
 
@@ -37,7 +38,7 @@ class HasScope(Permission):
         super().__post_init__()
 
     def __resolver_to_depends__(self, resolver: PermissionResolver) -> Any:
-        return Security(resolver, scopes=[*self.scopes])
+        return Security(resolver, scopes=sorted(self.scopes))
 
     async def check_permissions(self, current_scopes: Iterable[str], /, security_scopes: SecurityScopes) -> bool:
         return all(required_scope in current_scopes for required_scope in security_scopes.scopes)

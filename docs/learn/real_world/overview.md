@@ -24,9 +24,7 @@ app/
 Define base permissions tied to your authentication system:
 
 ```python
-from fastapi.exceptions import RequestValidationError
-
-from fastapi_has_permissions import Permission, PermissionWrapper, SkipOnExc, WithError
+from fastapi_has_permissions import Permission, PermissionWrapper, SkipUnresolved, WithError
 
 from app.auth.dependencies import get_current_user, User
 
@@ -65,7 +63,7 @@ class IsPrivilegedUser(PermissionWrapper):
 
 # Abstain instead of failing when a resource dependency cannot be resolved
 def graceful(permission: Permission) -> Permission:
-    return SkipOnExc(permission, (RequestValidationError,))
+    return SkipUnresolved(permission)
 
 
 # Reusable policy: this subtree answers 404 instead of admitting the resource exists

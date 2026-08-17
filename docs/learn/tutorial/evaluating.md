@@ -120,7 +120,25 @@ async def report(perms: Evaluate) -> dict:
         ...
 ```
 
-Pass `request=` to supply one explicitly instead.
+Pass `request=` to supply one explicitly instead, or `app=` so dependencies reading
+`request.app.state` resolve off-request.
+
+### Strict Mode
+
+Off a request, `evaluate` fabricates one. A rule that *needs* something from the request then
+fails loudly -- but a dependency that tolerates absence does not: an actor dep that falls back to
+anonymous evaluates against no actor at all, and reports an ordinary denial. Nothing distinguishes
+that from a real one.
+
+`strict=True` refuses to decide against a fabricated request:
+
+```python
+async with evaluate.scope({ActorDep: actor}, strict=True) as perms:
+    await perms.require(OwnsStudent())   # SyntheticScopeError unless a request is bound
+```
+
+Pass `request=` to give it a real one. Nested scopes inherit the setting, and
+`scope(strict=False)` turns it off again for a block.
 
 ## Raising Something Other Than `PermissionDeniedError`
 

@@ -3,7 +3,6 @@ from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI, Header, Request, status
-from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
 from fastapi_has_permissions import (
@@ -16,6 +15,7 @@ from fastapi_has_permissions import (
     Permission,
     SkipOnExc,
     Skipped,
+    SkipUnresolved,
     WithError,
     add_permissions,
     evaluate,
@@ -173,7 +173,7 @@ add_permissions(app)
         Depends(
             AllowSkipped(
                 FailOnExc(
-                    SkipOnExc(AgeIsMoreThan(age=18), (RequestValidationError,)),
+                    SkipUnresolved(AgeIsMoreThan(age=18)),
                     (BackendError,),
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 ),

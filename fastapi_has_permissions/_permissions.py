@@ -7,10 +7,8 @@ from typing import TYPE_CHECKING, Any, ClassVar, final
 
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi.params import Depends
-from fastapi_injected import is_dep
+from fastapi_injected import MakeDataclass, is_dep, signature_with_deps
 
-from ._bases import ForceDataclass
-from ._deps_args import get_signature_with_deps
 from ._errors import ErrorConfig
 from ._resolvers import PermissionResolver, lazy_check_permission
 from ._results import (
@@ -28,6 +26,7 @@ from ._results import (
     trace_name,
     with_source,
 )
+from ._security import as_hashable_security
 from .types import AsyncFunc, Dep
 
 
@@ -46,7 +45,7 @@ class BasePermission(ABC):  # noqa: B024
 
 
 class Permission(
-    ForceDataclass,
+    MakeDataclass,
     BasePermission,
     ErrorConfig,
     ABC,
@@ -54,9 +53,6 @@ class Permission(
     __auto_error__: ClassVar[bool] = True
     # overrides the class name a trace reports this permission under
     __trace_name__: ClassVar[str | None] = None
-
-    def __post_init__(self) -> None:
-        pass
 
     def __deps__(self) -> Iterable[Dep]:
         for param in get_typed_signature(type(self)).parameters.values():
@@ -69,13 +65,13 @@ class Permission(
         return ()
 
     def __lazy_depends__(self, methods: Collection[str] = (), /) -> Iterable[Depends]:
-        yield self.__resolver_to_depends__(PermissionResolver(self))
+        yield as_hashable_security(self.__resolver_to_depends__(PermissionResolver(self)))
 
         for sub in self.__sub_permissions__():
             yield from sub.__lazy_depends__(methods)
 
     def __check_signature__(self) -> inspect.Signature:
-        return get_signature_with_deps(self.check_permissions, [*self.__deps__()])
+        return signature_with_deps(self.check_permissions, *self.__deps__())
 
     def __resolver_to_depends__(self, resolver: PermissionResolver) -> Any:
         return Depends(resolver)

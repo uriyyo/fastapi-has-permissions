@@ -4,10 +4,9 @@ from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI, Header, Path, status
-from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 
-from fastapi_has_permissions import AllowSkipped, Permission, SkipOnExc, add_permissions, evaluate
+from fastapi_has_permissions import AllowSkipped, Permission, SkipOnExc, SkipUnresolved, add_permissions, evaluate
 from fastapi_has_permissions.common import Allow
 
 app = FastAPI()
@@ -25,13 +24,13 @@ class AgeIsMoreThan(Permission):
 @app.get(
     "/age-restricted-endpoint",
     dependencies=[
-        Depends(AllowSkipped(SkipOnExc(AgeIsMoreThan(age=18), (RequestValidationError,)))),
+        Depends(AllowSkipped(SkipUnresolved(AgeIsMoreThan(age=18)))),
     ],
 )
 @app.get(
     "/strict-age-restricted-endpoint",
     dependencies=[
-        Depends(SkipOnExc(AgeIsMoreThan(age=18), (RequestValidationError,))),
+        Depends(SkipUnresolved(AgeIsMoreThan(age=18))),
     ],
 )
 async def route() -> str:
@@ -159,7 +158,7 @@ add_permissions(error_app)
 
 @error_app.get(
     "/error",
-    dependencies=[Depends(SkipOnExc(UsesFailingDep(), (RequestValidationError,)))],
+    dependencies=[Depends(SkipUnresolved(UsesFailingDep()))],
 )
 async def error_route() -> str:
     return "You have access to this endpoint!"
@@ -208,3 +207,34 @@ class TestNestedDeferral:
 
     def test_exceptions_from_a_nested_dependency_are_caught(self, nested_client: TestClient) -> None:
         assert nested_client.get("/nested").status_code == status.HTTP_200_OK
+
+
+unhandled_app = FastAPI()
+add_permissions(unhandled_app)
+
+
+@unhandled_app.get(
+    "/unwrapped",
+    dependencies=[Depends(AgeIsMoreThan(age=18))],
+)
+async def unwrapped_route() -> str:
+    return "You have access to this endpoint!"
+
+
+def test_unresolvable_dependency_answers_like_a_route_parameter() -> None:
+    # `add_permissions` registers the handler that turns the resolution failure into the
+    # response an unresolvable route parameter would get, rather than a 500
+    with TestClient(unhandled_app) as client:
+        response = client.get("/unwrapped")
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.json() == {
+        "detail": [
+            {
+                "type": "missing",
+                "loc": ["header", "age"],
+                "msg": "Field required",
+                "input": None,
+            },
+        ],
+    }

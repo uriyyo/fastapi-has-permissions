@@ -65,7 +65,7 @@ def test_the_result_predicates_stay_mutually_consistent() -> None:
 
 
 def test_results_are_hashable() -> None:
-    # `ForceDataclass` hashes by value, so a result can be keyed, cached or set-membered
+    # `MakeDataclass` hashes by value, so a result can be keyed, cached or set-membered
     assert hash(Failed(reason="denied")) == hash(Failed(reason="denied"))
     assert hash(Skipped(reason="abstained")) == hash(Skipped(reason="abstained"))
     assert {Failed(), Failed(), Skipped()} == {Failed(), Skipped()}

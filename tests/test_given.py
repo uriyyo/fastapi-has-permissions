@@ -4,12 +4,12 @@ from typing import Annotated
 
 import pytest
 from fastapi import Depends, FastAPI, Path, status
-from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 from fastapi_injected import is_dep, push_inject_scope, unwrap_dep_dependency
 
 from fastapi_has_permissions import (
     Dep,
+    DependencyResolutionError,
     Given,
     Permission,
     add_permissions,
@@ -73,7 +73,7 @@ async def test_given_evaluates_off_request() -> None:
 async def test_dep_marker_still_needs_a_request() -> None:
     # the contrast that motivates `Given` - a request-bound marker cannot resolve
     # off-request, because the fabricated scope carries no path params
-    with pytest.raises(RequestValidationError):
+    with pytest.raises(DependencyResolutionError):
         await evaluate(OwnsStudent(FromPathStudentId))
 
 

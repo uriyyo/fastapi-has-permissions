@@ -45,6 +45,14 @@ class PermissionDeniedError(Exception):
         )
 
 
+class SyntheticScopeError(RuntimeError):
+    def __init__(self) -> None:
+        super().__init__(
+            "a strict evaluator refuses a fabricated request - pass request= to "
+            "PermissionEvaluator.scope(), or drop strict= to evaluate without one",
+        )
+
+
 @dataclass
 class ErrorConfig:
     message: str | None = field(default=None, kw_only=True)
@@ -118,4 +126,5 @@ class ErrorConfig:
 __all__ = [
     "ErrorConfig",
     "PermissionDeniedError",
+    "SyntheticScopeError",
 ]

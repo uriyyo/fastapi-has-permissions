@@ -3,9 +3,8 @@ from __future__ import annotations
 from dataclasses import field, replace
 from typing import TYPE_CHECKING, Any, Literal, NoReturn
 
+from fastapi_injected import MakeDataclass
 from typing_extensions import TypeIs
-
-from ._bases import ForceDataclass
 
 if TYPE_CHECKING:
     from ._permissions import Permission
@@ -26,7 +25,7 @@ class PermissionCheckFailed(Exception):  # noqa: N818
 type Outcome = Literal["success", "failed", "skipped"]
 
 
-class Source(ForceDataclass):
+class Source(MakeDataclass):
     name: str
     outcome: Outcome
     reason: str | None = None
@@ -52,12 +51,12 @@ class Source(ForceDataclass):
         return f"{self.name}[{label}]"
 
 
-class Skipped(ForceDataclass):
+class Skipped(MakeDataclass):
     reason: str | None = None
     source: Source | None = field(default=None, compare=False)
 
 
-class Failed(ForceDataclass):
+class Failed(MakeDataclass):
     reason: str | None = None
     status_code: int | None = None
     code: str | None = None

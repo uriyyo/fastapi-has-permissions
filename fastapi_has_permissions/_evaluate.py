@@ -1,25 +1,35 @@
 from collections.abc import AsyncIterator, Iterable
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 from dataclasses import field, replace
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Self, final
 
-from fastapi import Depends, Request
-from fastapi_injected import push_inject_scope, push_overrides
-from fastapi_injected.overrides import Overrides
-from fastapi_injected.scope import current_inject_scope
+from fastapi import Depends, FastAPI, Request
+from fastapi_injected import InjectScope, MakeDataclass, Overrides, push_inject_scope
 
-from ._bases import ForceDataclass
+from ._errors import SyntheticScopeError
 from ._permissions import Permission, PermissionWrapper
 from ._resolvers import lazy_check_permission
 from ._results import CheckResult, Failed, as_failed, is_successful, to_failed
 from .types import ExceptionFactory, PermissionFactory
 
 
-class PermissionEvaluator(ForceDataclass):
+class PermissionEvaluator(MakeDataclass):
     on_failure: ExceptionFactory | None = field(default=None, kw_only=True)
+    # refuse to decide against a request that never existed - a dependency that tolerates
+    # a missing actor would otherwise report an ordinary denial, and nothing would say why
+    strict: bool = field(default=False, kw_only=True)
 
     async def __call__(self, permission: Permission, /) -> CheckResult:
+        if self.strict:
+            self.__check_scope__()
+
         return await lazy_check_permission(permission)
+
+    def __check_scope__(self) -> None:
+        scope = InjectScope.current()
+
+        if scope is None or scope.synthetic:
+            raise SyntheticScopeError
 
     async def check(self, permission: Permission, /) -> bool:
         return is_successful(await self(permission))
@@ -43,20 +53,18 @@ class PermissionEvaluator(ForceDataclass):
         /,
         *,
         request: Request | None = None,
+        app: FastAPI | None = None,
         on_failure: ExceptionFactory | None = None,
+        strict: bool | None = None,
     ) -> AsyncIterator[Self]:
-        # inherit the surrounding request so request-bound dependencies keep resolving,
-        # while the fresh scope gives the overrides a cache of their own
-        if request is None and (current := current_inject_scope()) is not None:
-            request = current.request
+        evaluator = replace(
+            self,
+            on_failure=on_failure or self.on_failure,
+            strict=self.strict if strict is None else strict,
+        )
 
-        async with AsyncExitStack() as stack:
-            await stack.enter_async_context(push_inject_scope(request=request))
-
-            if overrides is not None:
-                stack.enter_context(push_overrides(overrides))
-
-            yield replace(self, on_failure=on_failure or self.on_failure)
+        async with push_inject_scope(overrides, request=request, app=app):
+            yield evaluator
 
     def __to_exception__(self, permission: Permission, failed: Failed, /) -> Exception:
         if self.on_failure is not None:
