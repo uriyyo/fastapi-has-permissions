@@ -51,8 +51,8 @@ class IsEditor(Permission):
 
 
 class HasServiceToken(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        token = request.headers.get("x-service-token")
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        token = connection.headers.get("x-service-token")
         return token == settings.SERVICE_TOKEN
 
 

@@ -8,14 +8,15 @@ implement the `check_permissions` method.
 The simplest permission class has no fields and uses only injected parameters:
 
 ```python
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission
 
 
 class HasAuthorizationHeader(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return "Authorization" in request.headers
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return "Authorization" in connection.headers
 
 
 app = FastAPI()
@@ -37,7 +38,8 @@ the permission check:
 ```python
 from dataclasses import dataclass
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission
 
@@ -46,8 +48,8 @@ from fastapi_has_permissions import Permission
 class HasRole(Permission):
     role: str
 
-    async def check_permissions(self, request: Request) -> bool:
-        return request.headers.get("role") == self.role
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return connection.headers.get("role") == self.role
 
 
 app = FastAPI()
@@ -152,8 +154,8 @@ from fastapi_has_permissions import CheckResult, Failed, Permission, fail
 
 
 class HasValidToken(Permission):
-    async def check_permissions(self, request: Request) -> CheckResult:
-        token = request.headers.get("Authorization")
+    async def check_permissions(self, connection: HTTPConnection) -> CheckResult:
+        token = connection.headers.get("Authorization")
 
         if token is None:
             return Failed(reason="Authorization header is missing")
@@ -180,8 +182,8 @@ from fastapi_has_permissions import Permission
 
 
 class IsAuthenticated(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return "Authorization" in request.headers
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return "Authorization" in connection.headers
 
 
 app = FastAPI()

@@ -16,19 +16,20 @@ using boolean operators. This lets you build complex access control rules from s
 Use `&` to require that all permissions are satisfied:
 
 ```python
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission
 
 
 class HasAuthorizationHeader(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return "Authorization" in request.headers
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return "Authorization" in connection.headers
 
 
 class HasAdminRole(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return request.headers.get("role") == "admin"
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return connection.headers.get("role") == "admin"
 
 
 app = FastAPI()
@@ -108,13 +109,13 @@ from fastapi_has_permissions import Permission, PermissionWrapper
 
 
 class IsStaff(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return request.headers.get("role") == "staff"
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return connection.headers.get("role") == "staff"
 
 
 class HasServiceToken(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return request.headers.get("x-service-token") == "secret-123"
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return connection.headers.get("x-service-token") == "secret-123"
 
 
 class IsPrivilegedUser(PermissionWrapper):

@@ -120,7 +120,8 @@ async def report(perms: Evaluate) -> dict:
         ...
 ```
 
-Pass `request=` to supply one explicitly instead, or `app=` so dependencies reading
+Pass `request=` to supply one explicitly instead -- it takes any `HTTPConnection`, so a
+`WebSocket` serves as well as a `Request` -- or `app=` so dependencies reading
 `request.app.state` resolve off-request.
 
 ### Strict Mode

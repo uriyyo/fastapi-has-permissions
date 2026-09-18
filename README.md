@@ -45,14 +45,15 @@ declared — FastAPI copies the router dependencies into every route at registra
 Subclass `Permission` and implement `check_permissions()`:
 
 ```python
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission, add_permissions
 
 
 class HasAuthorizationHeader(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return "Authorization" in request.headers
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return "Authorization" in connection.headers
 
 
 app = FastAPI()
@@ -73,8 +74,8 @@ Permissions with parameters are automatically dataclasses:
 class HasRole(Permission):
     role: str
 
-    async def check_permissions(self, request: Request) -> bool:
-        return request.headers.get("role") == self.role
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return connection.headers.get("role") == self.role
 ```
 
 ### Boolean Composition
