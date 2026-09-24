@@ -10,14 +10,15 @@ result instead of the guard.
 With `Depends(...)`, a failed check raises and the handler never executes:
 
 ```python
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission
 
 
 class HasAuthorizationHeader(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return "Authorization" in request.headers
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return "Authorization" in connection.headers
 
 
 app = FastAPI()
@@ -40,14 +41,15 @@ async def protected():
 [`CheckResult`](skip_and_fail.md) rather than raising:
 
 ```python
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import CheckResult, Eval, Permission
 
 
 class HasAuthorizationHeader(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return "Authorization" in request.headers
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return "Authorization" in connection.headers
 
 
 app = FastAPI()

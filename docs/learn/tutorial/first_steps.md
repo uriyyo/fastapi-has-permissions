@@ -3,14 +3,15 @@
 Here is a minimal example of using `fastapi-has-permissions` to protect a route:
 
 ```python
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission
 
 
 class HasAuthorizationHeader(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        return "Authorization" in request.headers
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return "Authorization" in connection.headers
 
 
 app = FastAPI()
@@ -41,7 +42,8 @@ When a request is made to `/protected`:
 `Permission` subclasses integrate directly with FastAPI's dependency injection system. When you write
 `Depends(HasAuthorizationHeader())`, the permission instance is called as a FastAPI dependency. It:
 
-1. Resolves any parameters declared in `check_permissions` using FastAPI's DI (e.g., `Request`, `Header`, etc.).
+1. Resolves any parameters declared in `check_permissions` using FastAPI's DI (e.g., `HTTPConnection`,
+   `Header`, etc.).
 2. Calls `check_permissions` with the resolved values.
 3. If the result is `True`, the request proceeds.
 4. If the result is `False`, a `PermissionDeniedError` is raised, which `add_permissions` renders
@@ -49,6 +51,10 @@ When a request is made to `/protected`:
 
 !!! tip
 
-    The `check_permissions` method supports any parameter that FastAPI can inject -- `Request`, `Header`,
-    `Depends`, `Query`, `Path`, and more. This makes permission checks fully integrated with your
-    existing FastAPI dependencies.
+    The `check_permissions` method supports any parameter that FastAPI can inject -- `HTTPConnection`,
+    `Header`, `Depends`, `Query`, `Path`, and more. This makes permission checks fully integrated with
+    your existing FastAPI dependencies.
+
+    Prefer `HTTPConnection` over `Request`: it is what an HTTP request and a websocket connection have
+    in common, so the same permission guards a route of either kind. Ask for `Request` (or `WebSocket`)
+    only when you need something specific to one of them, and the permission is then bound to it.

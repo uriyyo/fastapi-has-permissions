@@ -47,6 +47,8 @@ the dependency that loads the object the policy is about.
 | `DELETE`               | `delete`  |
 | anything else          | `default` |
 
+A websocket connection carries no method at all, so it lands on `default` like any unmapped verb.
+
 All five default to `Deny()`. A policy that declares nothing denies everything, including
 methods you never thought about -- an unmapped verb falls to `default`, not through the net.
 Declare only what you want to open.

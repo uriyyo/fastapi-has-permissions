@@ -48,6 +48,14 @@ async def denied(request: Request, exc: PermissionDeniedError) -> JSONResponse:
     )
 ```
 
+!!! note
+
+    A handler registered for `PermissionDeniedError` is also reached from a websocket route, where
+    the first argument is a `WebSocket` and no response can be sent. The built-in handler closes the
+    connection with `1008 Policy Violation` and the denial's message as the reason. A handler of your
+    own that serves both should take an `HTTPConnection`, branch on `isinstance(conn, WebSocket)` and
+    return `None` for that case.
+
 Everything below configures what that error carries.
 
 ## Class-Level Defaults
@@ -56,7 +64,8 @@ Set `default_exc_message` and `default_exc_status_code` as class variables to ch
 for all instances of a permission:
 
 ```python
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, status
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission
 
@@ -65,8 +74,8 @@ class RequiresAuthentication(Permission):
     default_exc_message = "Authentication required"
     default_exc_status_code = status.HTTP_401_UNAUTHORIZED
 
-    async def check_permissions(self, request: Request) -> bool:
-        return "Authorization" in request.headers
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return "Authorization" in connection.headers
 
 
 app = FastAPI()
@@ -174,8 +183,8 @@ class HasRole(Permission):
     def get_exc_message(self) -> str:
         return f"You need the '{self.role}' role to access this resource"
 
-    async def check_permissions(self, request: Request) -> bool:
-        return request.headers.get("role") == self.role
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        return connection.headers.get("role") == self.role
 ```
 
 These methods take no arguments and are consulted whenever this permission's own error config is
@@ -212,8 +221,8 @@ from fastapi_has_permissions import Failed, Permission
 
 
 class HasValidToken(Permission):
-    async def check_permissions(self, request: Request) -> bool | Failed:
-        token = request.headers.get("Authorization")
+    async def check_permissions(self, connection: HTTPConnection) -> bool | Failed:
+        token = connection.headers.get("Authorization")
 
         if token is None:
             return Failed(reason="Authorization header is missing")

@@ -34,7 +34,8 @@ class IsArticleAuthor(Permission):
 
 This works for `GET /articles/{article_id}`, but not for `GET /articles` -- there is no
 `article_id` there, so resolving `get_article` raises a `DependencyResolutionError`, which
-`add_permissions` answers with the same `422` an unresolvable route parameter gets.
+`add_permissions` answers with the same `422` an unresolvable route parameter gets. On a
+websocket route, where no response can be sent, it closes the connection with `1008 Policy Violation`.
 
 ## `SkipUnresolved` -- Abstain Instead of Failing
 

@@ -5,14 +5,15 @@ For simpler permission checks, you can use the `@permission` decorator instead o
 ## Basic Usage
 
 ```python
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import permission
 
 
 @permission
-async def has_authorization_header(request: Request) -> bool:
-    return "Authorization" in request.headers
+async def has_authorization_header(connection: HTTPConnection) -> bool:
+    return "Authorization" in connection.headers
 
 
 app = FastAPI()
@@ -152,7 +153,8 @@ standard DI.
 Function-based permissions support the same `&`, `|`, `~` operators as class-based permissions:
 
 ```python
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
+from starlette.requests import HTTPConnection
 from typing import Annotated
 from fastapi import Header
 
@@ -160,8 +162,8 @@ from fastapi_has_permissions import permission
 
 
 @permission
-async def has_authorization(request: Request) -> bool:
-    return "Authorization" in request.headers
+async def has_authorization(connection: HTTPConnection) -> bool:
+    return "Authorization" in connection.headers
 
 
 @permission

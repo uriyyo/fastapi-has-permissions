@@ -1,10 +1,12 @@
 from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
 from dataclasses import field, replace
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Self, final
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Self, cast, final
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI
 from fastapi_injected import InjectScope, MakeDataclass, Overrides, push_inject_scope
+from fastapi_injected.types import BoundConnection
+from starlette.requests import HTTPConnection
 
 from ._errors import SyntheticScopeError
 from ._permissions import Permission, PermissionWrapper
@@ -52,7 +54,7 @@ class PermissionEvaluator(MakeDataclass):
         overrides: Overrides | None = None,
         /,
         *,
-        request: Request | None = None,
+        request: HTTPConnection | None = None,
         app: FastAPI | None = None,
         on_failure: ExceptionFactory | None = None,
         strict: bool | None = None,
@@ -63,7 +65,7 @@ class PermissionEvaluator(MakeDataclass):
             strict=self.strict if strict is None else strict,
         )
 
-        async with push_inject_scope(overrides, request=request, app=app):
+        async with push_inject_scope(overrides, request=cast("BoundConnection | None", request), app=app):
             yield evaluator
 
     def __to_exception__(self, permission: Permission, failed: Failed, /) -> Exception:

@@ -8,14 +8,14 @@ the permission check flow.
 Call `fail()` inside `check_permissions` to immediately deny the permission with a custom message:
 
 ```python
-from fastapi import Request
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission, fail
 
 
 class HasValidToken(Permission):
-    async def check_permissions(self, request: Request) -> bool:
-        token = request.headers.get("Authorization")
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        token = connection.headers.get("Authorization")
 
         if token is None:
             fail("Authorization header is required")
@@ -42,7 +42,7 @@ It is an abstention, not an approval -- a skip that reaches the root of a permis
 request unless you wrap it into [`AllowSkipped`](#allowskipped-opt-into-skip-means-allow):
 
 ```python
-from fastapi import Request
+from starlette.requests import HTTPConnection
 
 from fastapi_has_permissions import Permission, skip
 
@@ -50,11 +50,11 @@ from fastapi_has_permissions import Permission, skip
 class RequiresTokenIfPresent(Permission):
     """Only validates the token if it's provided. Skips otherwise."""
 
-    async def check_permissions(self, request: Request) -> bool:
-        if "Authorization" not in request.headers:
+    async def check_permissions(self, connection: HTTPConnection) -> bool:
+        if "Authorization" not in connection.headers:
             skip("No token provided, skipping validation")
 
-        return request.headers["Authorization"] == "Bearer valid-token"
+        return connection.headers["Authorization"] == "Bearer valid-token"
 ```
 
 `skip()` raises a `SkipPermissionCheck` exception internally. The library catches it and returns
@@ -69,8 +69,8 @@ from fastapi_has_permissions import CheckResult, Failed, Permission, Skipped
 
 
 class MyPermission(Permission):
-    async def check_permissions(self, request: Request) -> CheckResult:
-        token = request.headers.get("Authorization")
+    async def check_permissions(self, connection: HTTPConnection) -> CheckResult:
+        token = connection.headers.get("Authorization")
 
         if token is None:
             return Skipped(reason="No token, skipping")

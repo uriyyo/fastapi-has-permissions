@@ -1,9 +1,9 @@
 from collections.abc import Collection, Generator, Iterable
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Self, cast
 
-from fastapi import Request
 from fastapi.params import Depends
 from fastapi_injected import MakeDataclass, resolve
+from starlette.requests import HTTPConnection
 from typing_extensions import TypeVar
 
 from ._permissions import Permission
@@ -52,16 +52,17 @@ class Policy(MakeDataclass, Generic[TResource]):
             case _:
                 yield self.default
 
-    def __get_permissions__(self, request: Request) -> Generator[Permission]:
-        yield from self.__get_permissions_for_method__(request.method)
+    def __get_permissions__(self, connection: HTTPConnection) -> Generator[Permission]:
+        # a websocket connection carries no method - its scope type stands in, and lands on `default`
+        yield from self.__get_permissions_for_method__(connection.scope.get("method") or connection.scope["type"])
 
     def __lazy_depends__(self, methods: Collection[str], /) -> Iterable[Depends]:
         for method in methods:
             for permission in self.__get_permissions_for_method__(method):
                 yield from permission.__lazy_depends__(methods)
 
-    async def __call__(self, request: Request) -> None:
-        for permission in self.__get_permissions__(request):
+    async def __call__(self, connection: HTTPConnection) -> None:
+        for permission in self.__get_permissions__(connection):
             await resolve(permission)
 
 
