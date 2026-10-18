@@ -5,7 +5,8 @@ from typing import Annotated
 import pytest
 from fastapi import Depends, FastAPI, Path, status
 from fastapi.testclient import TestClient
-from fastapi_injected import is_dep, push_inject_scope, unwrap_dep_dependency
+from fastapi_injected import injection_ctx
+from fastapi_injected.ext import is_dep, unwrap_dep_dependency
 
 from fastapi_has_permissions import (
     Dep,
@@ -116,7 +117,7 @@ async def test_given_shares_one_cache_entry_per_scope() -> None:
     permission = OwnsStudent(Given(uuid.UUID(int=1)))
     before = resolved_actors
 
-    async with push_inject_scope():
+    async with injection_ctx():
         for _ in range(3):
             assert is_successful(await evaluate(permission))
 

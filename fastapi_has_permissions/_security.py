@@ -1,7 +1,7 @@
 from typing import Any
 
 from fastapi import params
-from fastapi_injected import MakeDataclass
+from fastapi_injected.ext import MakeDataclass
 
 
 class Security(MakeDataclass, params.Security, frozen=True):

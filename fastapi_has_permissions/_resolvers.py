@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from fastapi_injected import MakeDataclass, remap_dep_args, resolve
+from fastapi_injected import resolve
+from fastapi_injected.ext import MakeDataclass, remap_dep_args
 
 from ._results import CheckResult, Skipped, SkipPermissionCheck, call_permissions_check
 from ._security import as_hashable_security

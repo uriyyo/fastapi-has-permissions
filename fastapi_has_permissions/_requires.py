@@ -4,7 +4,8 @@ from collections.abc import Callable, Collection, Iterable
 from typing import Any, cast, overload
 
 from fastapi.params import Depends
-from fastapi_injected import MakeDataclass, is_dep, resolve, unwrap_dep_dependency
+from fastapi_injected import resolve
+from fastapi_injected.ext import MakeDataclass, is_dep, unwrap_dep_dependency
 
 from ._permissions import Permission
 from ._policy import Policy

@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 class WhenPermission(PermissionWrapper):
     guard: Permission
 
-    __trace_name__: ClassVar[str] = "When"
+    __trace_name__: ClassVar[str | None] = "When"
 
     def __sub_permissions__(self) -> Iterable[Permission]:
         return (self.guard, self.permission)

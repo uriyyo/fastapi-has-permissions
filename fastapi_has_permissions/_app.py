@@ -7,7 +7,7 @@ from fastapi.exception_handlers import (
     websocket_request_validation_exception_handler,
 )
 from fastapi.exceptions import WebSocketRequestValidationError
-from fastapi_injected import DependencyResolutionError, add_injected_scope
+from fastapi_injected import DependencyResolutionError, add_injection
 from starlette.requests import HTTPConnection, Request
 from starlette.status import WS_1008_POLICY_VIOLATION
 from starlette.types import ExceptionHandler
@@ -48,7 +48,7 @@ async def dependency_resolution_handler(connection: HTTPConnection, exc: Excepti
 
 
 def add_permissions(app: FastAPI, /) -> None:
-    add_injected_scope(app)
+    add_injection(app)
     add_permissions_openapi(app)
     # starlette types a handler as either an HTTP one or a websocket one - these serve both
     app.add_exception_handler(PermissionDeniedError, cast("ExceptionHandler", permission_denied_handler))

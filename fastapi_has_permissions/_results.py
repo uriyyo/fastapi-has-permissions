@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import field, replace
 from typing import TYPE_CHECKING, Any, Literal, NoReturn
 
-from fastapi_injected import MakeDataclass
+from fastapi_injected.ext import MakeDataclass
 from typing_extensions import TypeIs
 
 if TYPE_CHECKING:

@@ -1,10 +1,12 @@
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncGenerator, Iterable
 from contextlib import asynccontextmanager
 from dataclasses import field, replace
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Self, cast, final
 
 from fastapi import Depends, FastAPI
-from fastapi_injected import InjectScope, MakeDataclass, Overrides, push_inject_scope
+from fastapi_injected import InjectionContext, injection_ctx
+from fastapi_injected.ext import MakeDataclass
+from fastapi_injected.overrides import Overrides
 from fastapi_injected.types import BoundConnection
 from starlette.requests import HTTPConnection
 
@@ -28,7 +30,7 @@ class PermissionEvaluator(MakeDataclass):
         return await lazy_check_permission(permission)
 
     def __check_scope__(self) -> None:
-        scope = InjectScope.current()
+        scope = InjectionContext.current()
 
         if scope is None or scope.synthetic:
             raise SyntheticScopeError
@@ -58,14 +60,14 @@ class PermissionEvaluator(MakeDataclass):
         app: FastAPI | None = None,
         on_failure: ExceptionFactory | None = None,
         strict: bool | None = None,
-    ) -> AsyncIterator[Self]:
+    ) -> AsyncGenerator[Self]:
         evaluator = replace(
             self,
             on_failure=on_failure or self.on_failure,
             strict=self.strict if strict is None else strict,
         )
 
-        async with push_inject_scope(overrides, request=cast("BoundConnection | None", request), app=app):
+        async with injection_ctx(overrides, request=cast("BoundConnection | None", request), app=app):
             yield evaluator
 
     def __to_exception__(self, permission: Permission, failed: Failed, /) -> Exception:

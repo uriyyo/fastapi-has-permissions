@@ -2,7 +2,8 @@ from collections.abc import Collection, Generator, Iterable
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Self, cast
 
 from fastapi.params import Depends
-from fastapi_injected import MakeDataclass, resolve
+from fastapi_injected import resolve
+from fastapi_injected.ext import MakeDataclass
 from starlette.requests import HTTPConnection
 from typing_extensions import TypeVar
 

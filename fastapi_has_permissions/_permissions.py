@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, final
 
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi.params import Depends
-from fastapi_injected import MakeDataclass, is_dep, signature_with_deps
+from fastapi_injected.ext import MakeDataclass, is_dep, signature_with_deps
 
 from ._errors import ErrorConfig
 from ._resolvers import PermissionResolver, lazy_check_permission

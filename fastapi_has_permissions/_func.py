@@ -4,7 +4,7 @@ from functools import partial
 from typing import Any, overload
 
 from fastapi.dependencies.utils import get_typed_signature
-from fastapi_injected import is_dep, signature_with_deps, unwrap_dep_tp
+from fastapi_injected.ext import is_dep, signature_with_deps, unwrap_dep_tp
 
 from ._permissions import Permission
 from ._results import CheckResult
