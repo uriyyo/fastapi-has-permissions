@@ -90,7 +90,7 @@ def add_permissions_openapi(app: FastAPI, /) -> None:
     if isinstance(app.openapi, _PermissionSchema):
         return
 
-    app.openapi = _PermissionSchema(app, app.openapi)  # type: ignore[ty:invalid-assignment]
+    app.openapi = _PermissionSchema(app, app.openapi)
 
 
 __all__ = [
