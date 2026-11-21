@@ -51,4 +51,4 @@ def _negatives() -> None:
     # `Dep[T]` is the marker as a value, so a parameter annotated with it is not a `T`
     @permission
     async def _marker_as_parameter(doc: Dep[Doc], /) -> bool:
-        return doc.name == "owner"  # type: ignore[ty:unresolved-attribute]
+        return doc.name == "owner"  # type: ignore[ty:missing-attribute]

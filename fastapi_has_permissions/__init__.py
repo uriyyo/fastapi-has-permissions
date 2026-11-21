@@ -50,7 +50,6 @@ __all__ = [
     "Dep",
     "DepFactory",
     "DependencyResolutionError",
-    "Depends",
     "Eval",
     "Evaluate",
     "ExcHandler",
