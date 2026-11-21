@@ -3,8 +3,8 @@ from collections.abc import Callable, Iterable, Sequence
 from functools import partial
 from typing import Any, overload
 
-from fastapi.dependencies.utils import get_typed_signature
 from fastapi_injected.ext import is_dep, signature_with_deps, unwrap_dep_tp
+from fastapi_injected.signature import Signature
 
 from ._permissions import Permission
 from ._results import CheckResult
@@ -12,7 +12,7 @@ from .types import AsyncFunc, Dep
 
 
 def _func_deps(func: AsyncFunc, /) -> Iterable[Dep]:
-    sign = get_typed_signature(func)
+    sign = Signature.of(func)
     deps_ended = False
 
     for param in sign.parameters.values():

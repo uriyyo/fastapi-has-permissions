@@ -5,9 +5,9 @@ from abc import ABC, abstractmethod
 from collections.abc import Collection, Iterable, Sequence
 from typing import TYPE_CHECKING, Any, ClassVar, ForwardRef, final
 
-from fastapi.dependencies.utils import get_typed_signature
 from fastapi.params import Depends
 from fastapi_injected.ext import MakeDataclass, is_dep, signature_with_deps
+from fastapi_injected.signature import Signature
 
 from ._errors import ErrorConfig
 from ._resolvers import PermissionResolver, lazy_check_permission
@@ -63,7 +63,7 @@ class Permission(
     __trace_name__: ClassVar[str | None] = None
 
     def __deps__(self) -> Iterable[Dep]:
-        for param in get_typed_signature(type(self)).parameters.values():
+        for param in Signature.of(type(self)).parameters.values():
             value = getattr(self, param.name)
 
             if _is_dep_field(param.annotation, value):
@@ -79,6 +79,9 @@ class Permission(
 
         for sub in self.__sub_permissions__():
             yield from sub.__lazy_depends__(methods)
+
+    def __doc_depends__(self, methods: Collection[str], /) -> Iterable[Depends]:
+        return self.__lazy_depends__(methods)
 
     def __check_signature__(self) -> inspect.Signature:
         return signature_with_deps(self.check_permissions, *self.__deps__())

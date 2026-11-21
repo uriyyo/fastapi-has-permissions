@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, FastAPI, Header, status
 from fastapi.routing import iter_route_contexts
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.testclient import TestClient
+from fastapi_injected.openapi import add_openapi_hook, iter_doc_depends
 
 from fastapi_has_permissions import (
     AllowSkipped,
@@ -16,7 +17,6 @@ from fastapi_has_permissions import (
     Undocumented,
     add_permissions,
 )
-from fastapi_has_permissions._openapi import build_permission_schema, route_declarations
 from fastapi_has_permissions.common import Allow, HasScope
 
 CHECKS: list[str] = []
@@ -308,10 +308,7 @@ class TestInstallation:
 
         assert application.openapi is installed
 
-    def test_a_custom_openapi_installed_first_is_superseded(self) -> None:
-        # the wrapped implementation is called for its caching, not its output, so a
-        # custom one installed beforehand does not survive - build on
-        # `build_permission_schema` instead, as the next test shows
+    def test_a_custom_openapi_installed_first_is_kept(self) -> None:
         application = FastAPI()
 
         def custom() -> dict[str, Any]:
@@ -322,16 +319,9 @@ class TestInstallation:
         application.openapi = custom  # type: ignore[ty:invalid-assignment]
         add_permissions(application)
 
-        @application.get("/x", dependencies=[Depends(NeedsActor())])
-        async def route() -> str:
-            return "ok"
+        assert application.openapi()["info"]["x-custom"] is True
 
-        spec = application.openapi()
-
-        assert "x-custom" not in spec["info"]
-        assert params(spec, "/x") == ["x-actor"]
-
-    def test_build_permission_schema_composes_with_a_custom_openapi(self) -> None:
+    def test_a_hook_composes_with_the_permission_schema(self) -> None:
         application = FastAPI()
         add_permissions(application)
 
@@ -339,12 +329,10 @@ class TestInstallation:
         async def route() -> str:
             return "ok"
 
-        def custom() -> dict[str, Any]:
-            schema = build_permission_schema(application)
+        def hook(_: FastAPI, schema: dict[str, Any]) -> None:
             schema["info"]["x-custom"] = True
-            return schema
 
-        application.openapi = custom  # type: ignore[ty:invalid-assignment]
+        add_openapi_hook(application, hook)
         spec = application.openapi()
 
         assert spec["info"]["x-custom"] is True
@@ -391,13 +379,13 @@ class TestLazyDepends:
 
     def test_a_route_declares_each_branch_of_its_composite(self, app: FastAPI) -> None:
         route = next(r for r in iter_route_contexts(app.routes) if r.path == "/composed")
-        declared = {declared_permission_name(dependency) for dependency in route_declarations(route)}
+        declared = {declared_permission_name(dependency) for dependency in iter_doc_depends(route)}
 
         assert {"NeedsActor", "NeedsOther"} <= declared
 
     def test_a_requires_route_declares_its_loader_and_permission(self, app: FastAPI) -> None:
         route = next(r for r in iter_route_contexts(app.routes) if r.path == "/requires")
-        declared = [dependency.dependency for dependency in route_declarations(route)]
+        declared = [dependency.dependency for dependency in iter_doc_depends(route)]
 
         # the loader is a plain callable; the permission arrives via its resolver
         assert get_doc in declared

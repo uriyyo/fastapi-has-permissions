@@ -62,6 +62,9 @@ class Policy(MakeDataclass, Generic[TResource]):
             for permission in self.__get_permissions_for_method__(method):
                 yield from permission.__lazy_depends__(methods)
 
+    def __doc_depends__(self, methods: Collection[str], /) -> Iterable[Depends]:
+        return self.__lazy_depends__(methods)
+
     async def __call__(self, connection: HTTPConnection) -> None:
         for permission in self.__get_permissions__(connection):
             await resolve(permission)

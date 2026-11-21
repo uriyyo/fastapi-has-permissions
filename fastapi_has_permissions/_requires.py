@@ -23,6 +23,9 @@ class RequiresResolver[R](MakeDataclass):
         yield Depends(cast("Callable[..., Any]", resource))
         yield from self.requirement.__lazy_depends__(methods)
 
+    def __doc_depends__(self, methods: Collection[str], /) -> Iterable[Depends]:
+        return self.__lazy_depends__(methods)
+
     async def __call__(self) -> R:
         await resolve(self.requirement)
 
