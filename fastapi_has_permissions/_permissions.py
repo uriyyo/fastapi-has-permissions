@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Collection, Iterable, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, ForwardRef, final
 
 from fastapi.dependencies.utils import get_typed_signature
 from fastapi.params import Depends
@@ -28,6 +28,14 @@ from ._results import (
 )
 from ._security import as_hashable_security
 from .types import AsyncFunc, Dep
+
+
+def _is_dep_field(annotation: Any, value: Any, /) -> bool:
+    if is_dep(annotation):
+        return True
+
+    # a `TYPE_CHECKING`-only annotation cannot tell, so the value does
+    return isinstance(annotation, ForwardRef) and (is_dep(value) or isinstance(value, Depends))
 
 
 class BasePermission(ABC):  # noqa: B024
@@ -56,8 +64,10 @@ class Permission(
 
     def __deps__(self) -> Iterable[Dep]:
         for param in get_typed_signature(type(self)).parameters.values():
-            if is_dep(param.annotation):
-                yield getattr(self, param.name)
+            value = getattr(self, param.name)
+
+            if _is_dep_field(param.annotation, value):
+                yield value
 
     def __sub_permissions__(self) -> Iterable[Permission]:
         # the permissions this one delegates to - a leaf has none. Walking these is how
@@ -146,6 +156,15 @@ class _SinglePermission(Permission):
 
 
 class PermissionWrapper(_SinglePermission):
+    def __deps__(self) -> Iterable[Dep]:
+        # without parameters of its own, a wrapper's fields configure what it wraps
+        sign = inspect.signature(self.check_permissions)
+
+        if not sign.parameters:
+            return ()
+
+        return super().__deps__()
+
     async def check_permissions(self) -> CheckResult:
         return await lazy_check_permission(self.permission)
 

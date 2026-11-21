@@ -50,9 +50,14 @@ async def dependency_resolution_handler(connection: HTTPConnection, exc: Excepti
 def add_permissions(app: FastAPI, /) -> None:
     add_injection(app)
     add_permissions_openapi(app)
+
     # starlette types a handler as either an HTTP one or a websocket one - these serve both
-    app.add_exception_handler(PermissionDeniedError, cast("ExceptionHandler", permission_denied_handler))
-    app.add_exception_handler(DependencyResolutionError, cast("ExceptionHandler", dependency_resolution_handler))
+    for exc, handler in (
+        (PermissionDeniedError, permission_denied_handler),
+        (DependencyResolutionError, dependency_resolution_handler),
+    ):
+        if exc not in app.exception_handlers:
+            app.add_exception_handler(exc, cast("ExceptionHandler", handler))
 
 
 __all__ = [

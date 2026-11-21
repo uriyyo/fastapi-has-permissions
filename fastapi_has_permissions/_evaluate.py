@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Self, cast, final
 
 from fastapi import Depends, FastAPI
 from fastapi_injected import InjectionContext, injection_ctx
-from fastapi_injected.ext import MakeDataclass
+from fastapi_injected.ext import MakeDataclass, ensure_injection_ctx
 from fastapi_injected.overrides import Overrides
 from fastapi_injected.types import BoundConnection
 from starlette.requests import HTTPConnection
@@ -51,7 +51,7 @@ class PermissionEvaluator(MakeDataclass):
         return [item for item in items if await self.check(permission(item))]
 
     @asynccontextmanager
-    async def scope(
+    async def scope(  # noqa: PLR0913 - one keyword per thing a scope can change
         self,
         overrides: Overrides | None = None,
         /,
@@ -60,12 +60,20 @@ class PermissionEvaluator(MakeDataclass):
         app: FastAPI | None = None,
         on_failure: ExceptionFactory | None = None,
         strict: bool | None = None,
+        new_ctx: bool = False,
     ) -> AsyncGenerator[Self]:
         evaluator = replace(
             self,
             on_failure=on_failure or self.on_failure,
             strict=self.strict if strict is None else strict,
         )
+
+        # with nothing to change, checks see the caller's cache, session and uncommitted work
+        if not new_ctx and overrides is None and request is None and app is None:
+            async with ensure_injection_ctx():
+                yield evaluator
+
+            return
 
         async with injection_ctx(overrides, request=cast("BoundConnection | None", request), app=app):
             yield evaluator

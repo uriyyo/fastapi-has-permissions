@@ -102,7 +102,7 @@ class ErrorConfig:
         code: str | None = None,
         headers: dict[str, str] | None = None,
         source: Source | None = None,
-    ) -> PermissionDeniedError:
+    ) -> Exception:
         return PermissionDeniedError(
             self.resolve_exc_message(message),
             status_code=self.resolve_exc_status_code(status_code),

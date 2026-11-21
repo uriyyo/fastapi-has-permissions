@@ -195,3 +195,23 @@ def test_an_app_can_answer_denials_in_its_own_shape() -> None:
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {"error": "student_inactive"}
+
+
+def test_add_permissions_keeps_a_handler_the_app_registered_first() -> None:
+    app = FastAPI()
+
+    @app.exception_handler(PermissionDeniedError)
+    async def _mine(_: Request, __: PermissionDeniedError) -> JSONResponse:
+        return JSONResponse({"mine": True}, status_code=status.HTTP_403_FORBIDDEN)
+
+    add_permissions(app)
+
+    class Never(Permission):
+        async def check_permissions(self) -> bool:
+            return False
+
+    @app.get("/x", dependencies=[Depends(Never())])
+    async def _x() -> None:
+        pass
+
+    assert TestClient(app).get("/x").json() == {"mine": True}

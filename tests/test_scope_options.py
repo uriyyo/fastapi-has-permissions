@@ -2,8 +2,9 @@ import uuid
 from typing import Annotated
 
 import pytest
-from fastapi import FastAPI, Header, Path, Request
+from fastapi import Depends, FastAPI, Header, Path, Request
 from fastapi.testclient import TestClient
+from fastapi_injected import injection_ctx, resolve
 
 from fastapi_has_permissions import (
     Dep,
@@ -120,3 +121,34 @@ async def test_app_is_available_to_dependencies_off_request() -> None:
 
     async with evaluate.scope(app=app) as ev:
         assert is_successful(await ev(MatchesTenant()))
+
+
+built: list[object] = []
+
+
+async def session() -> object:
+    built.append(object())
+    return built[-1]
+
+
+type SessionDep = Annotated[object, Depends(session)]
+
+
+class UsesFirstSession(Permission):
+    session_dep: Dep[object]
+
+    async def check_permissions(self, current: object, /) -> bool:
+        return current is built[0]
+
+
+async def test_scope_reuses_the_surrounding_context() -> None:
+    built.clear()
+
+    async with injection_ctx():
+        await resolve(session)
+
+        async with evaluate.scope() as ev:
+            assert await ev.check(UsesFirstSession(SessionDep))
+
+        async with evaluate.scope(new_ctx=True) as ev:
+            assert not await ev.check(UsesFirstSession(SessionDep))
